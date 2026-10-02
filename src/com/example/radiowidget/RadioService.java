@@ -42,6 +42,7 @@ public class RadioService extends Service {
     public static final String ACTION_TOGGLE = "com.example.radiowidget.TOGGLE";
     public static final String ACTION_NEXT = "com.example.radiowidget.NEXT";
     public static final String ACTION_PREV = "com.example.radiowidget.PREV";
+    public static final String ACTION_VOLUME = "com.example.radiowidget.VOLUME";
     // 调试用：把当前绘制的位图导出成 PNG，便于无需桌面即可预览 UI
     public static final String ACTION_PREVIEW = "com.example.radiowidget.PREVIEW";
 
@@ -55,6 +56,7 @@ public class RadioService extends Service {
     private MediaPlayer player;
     private int currentIndex = 0;
     private boolean isPlaying = false; // 是否处于“正在播放”状态（区别于 loading）
+    private float volume = 1.0f; // 组件自身音量 0~1（用 setVolume，不碰系统音量）
 
     private Typeface zpixTypeface; // 中文点阵
     private Typeface ndotTypeface; // Nothing Ndot（英文/数字）
@@ -104,6 +106,13 @@ public class RadioService extends Service {
             case ACTION_TOGGLE:
                 toggle();
                 break;
+            case ACTION_VOLUME:
+                volume = intent.getFloatExtra("level", volume);
+                if (player != null) {
+                    player.setVolume(volume, volume);
+                }
+                updateWidget();
+                break;
             case ACTION_START:
             default:
                 startForeground(1, buildNotification());
@@ -137,6 +146,7 @@ public class RadioService extends Service {
 
             player.setDataSource(this, Uri.parse(s.url), headers);
             player.setWakeMode(getApplicationContext(), PowerManager.PARTIAL_WAKE_LOCK);
+            player.setVolume(volume, volume); // 应用组件自身音量（不碰系统音量）
 
             player.setOnPreparedListener(mp -> {
                 errorCount = 0;
@@ -263,9 +273,27 @@ public class RadioService extends Service {
             views.setOnClickPendingIntent(R.id.btn_toggle, servicePi(ACTION_TOGGLE, 2));
             views.setOnClickPendingIntent(R.id.btn_next, servicePi(ACTION_NEXT, 3));
 
+            // 音量条 10 段点击区（0.1~1.0）
+            for (int i = 0; i < VOL_IDS.length; i++) {
+                views.setOnClickPendingIntent(VOL_IDS[i], volumePi(i));
+            }
+
             mgr.updateAppWidget(id, views);
         }
     }
+
+    private PendingIntent volumePi(int seg) {
+        Intent i = new Intent(this, RadioService.class);
+        i.setAction(ACTION_VOLUME);
+        i.putExtra("level", (seg + 1) / 10f);
+        return PendingIntent.getService(this, 100 + seg, i,
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+    }
+
+    private static final int[] VOL_IDS = new int[]{
+            R.id.vol_0, R.id.vol_1, R.id.vol_2, R.id.vol_3, R.id.vol_4,
+            R.id.vol_5, R.id.vol_6, R.id.vol_7, R.id.vol_8, R.id.vol_9,
+    };
 
     private PendingIntent servicePi(String action, int code) {
         Intent i = new Intent(this, RadioService.class);
@@ -298,26 +326,48 @@ public class RadioService extends Service {
         namePaint.setTextSize(54f);
         namePaint.setTextAlign(Paint.Align.CENTER);
         namePaint.setAntiAlias(false); // 像素字体关闭抗锯齿，保持点阵锐利
-        c.drawText(s.name, W / 2f, 100f, namePaint);
+        c.drawText(s.name, W / 2f, 88f, namePaint);
 
-        // 上一台 / 下一台 箭头（左右，白，小圆点，与播放键同一水平线）
-        drawDotPattern(c, 130, 200, PATTERN_PREV, 6, 16, Color.WHITE);
-        drawDotPattern(c, W - 130, 200, PATTERN_NEXT, 6, 16, Color.WHITE);
-
-        // 播放/暂停 图标（正中心，红，呼应指南针组件的红点）
-        String[] icon = isPlaying ? PATTERN_PAUSE : PATTERN_PLAY;
-        drawDotPattern(c, W / 2f, 200, icon, 6, 16, Color.rgb(255, 45, 45));
-
-        // 右下角台号（Ndot）
+        // 右上角台号（Ndot）
         Paint idxPaint = new Paint();
-        idxPaint.setColor(Color.argb(180, 255, 255, 255));
+        idxPaint.setColor(Color.argb(170, 255, 255, 255));
         idxPaint.setTypeface(ndotTypeface);
-        idxPaint.setTextSize(30f);
+        idxPaint.setTextSize(28f);
         idxPaint.setTextAlign(Paint.Align.RIGHT);
         idxPaint.setAntiAlias(true);
-        c.drawText((currentIndex + 1) + "/" + Station.LIST.length, W - 36f, H - 28f, idxPaint);
+        c.drawText((currentIndex + 1) + "/" + Station.LIST.length, W - 36f, 36f, idxPaint);
+
+        // 上一台 / 下一台 箭头（左右，白，小圆点）
+        drawDotPattern(c, 130, 185, PATTERN_PREV, 6, 16, Color.WHITE);
+        drawDotPattern(c, W - 130, 185, PATTERN_NEXT, 6, 16, Color.WHITE);
+
+        // 播放/暂停 图标（居中，红，呼应指南针组件的红点）
+        String[] icon = isPlaying ? PATTERN_PAUSE : PATTERN_PLAY;
+        drawDotPattern(c, W / 2f, 185, icon, 6, 16, Color.rgb(255, 45, 45));
+
+        // 音量条（底部横条：轨道 + 按比例填充）
+        drawVolumeBar(c);
 
         return bmp;
+    }
+
+    /** 底部音量条：深灰轨道 + 白色填充（长度 = volume 比例）。 */
+    private void drawVolumeBar(Canvas c) {
+        float left = 60f, right = W - 60f;
+        float top = 338f, bottom = 362f; // 高 24px，中心 y=350
+
+        Paint track = new Paint();
+        track.setColor(Color.rgb(58, 58, 58));
+        track.setAntiAlias(true);
+        c.drawRoundRect(left, top, right, bottom, 12f, 12f, track);
+
+        float fillRight = left + (right - left) * volume;
+        if (fillRight > left + 2f) {
+            Paint fill = new Paint();
+            fill.setColor(Color.WHITE);
+            fill.setAntiAlias(true);
+            c.drawRoundRect(left, top, fillRight, bottom, 12f, 12f, fill);
+        }
     }
 
     /** 用圆点矩阵绘制一个图标（Nothing 点阵风）。pattern 里 'X' 代表一个点。 */
