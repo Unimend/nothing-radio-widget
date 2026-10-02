@@ -285,7 +285,7 @@ public class RadioService extends Service {
     private PendingIntent volumePi(int seg) {
         Intent i = new Intent(this, RadioService.class);
         i.setAction(ACTION_VOLUME);
-        i.putExtra("level", (seg + 1) / 10f);
+        i.putExtra("level", seg / 9f); // 0.0 ~ 1.0，最左段 = 静音(0)
         return PendingIntent.getService(this, 100 + seg, i,
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
     }
@@ -353,7 +353,7 @@ public class RadioService extends Service {
 
     /** 底部音量条：深灰轨道 + 白色填充（长度 = volume 比例）。 */
     private void drawVolumeBar(Canvas c) {
-        float left = 60f, right = W - 60f;
+        float left = 90f, right = W - 90f; // 略微内缩，两端留出静音/满格的点击余量
         float top = 338f, bottom = 362f; // 高 24px，中心 y=350
 
         Paint track = new Paint();

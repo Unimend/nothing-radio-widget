@@ -37,7 +37,14 @@ Write-Host "===== 2. aapt2 link (pack assets fonts) =====" -ForegroundColor Cyan
 Write-Host "===== 3. javac compile Java =====" -ForegroundColor Cyan
 $srcs = (Get-ChildItem "$PROJ\src" -Recurse -Filter *.java).FullName
 $rjava = (Get-ChildItem "$OUT\gen" -Recurse -Filter R.java).FullName
-& javac -encoding UTF-8 -classpath $PLATFORM -d "$OUT\classes" (@($srcs) + @($rjava))
+# javac writes deprecation notes to stderr -> spurious NativeCommandError with Stop;
+# lower it just for this call, then check the real exit code.
+$prevPref = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
+& javac -encoding UTF-8 -classpath $PLATFORM -d "$OUT\classes" (@($srcs) + @($rjava)) 2>$null
+$javacExit = $LASTEXITCODE
+$ErrorActionPreference = $prevPref
+if ($javacExit -ne 0) { throw "javac failed with exit code $javacExit" }
 
 Write-Host "===== 4. d8 to dex =====" -ForegroundColor Cyan
 $classes = (Get-ChildItem "$OUT\classes" -Recurse -Filter *.class).FullName
