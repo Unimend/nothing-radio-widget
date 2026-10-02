@@ -1,0 +1,17 @@
+# build outputs
+build/
+
+# keystore
+*.keystore
+*.jks
+
+# APK (keep the release one at root)
+build/*.apk
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 个人协作文档（不属于本项目，勿上传）
+AI协作控制规范.md
+用户偏好画像.md
