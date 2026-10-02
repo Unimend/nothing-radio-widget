@@ -338,12 +338,12 @@ public class RadioService extends Service {
         c.drawText((currentIndex + 1) + "/" + Station.LIST.length, W - 36f, 36f, idxPaint);
 
         // 上一台 / 下一台 箭头（左右，白，小圆点）
-        drawDotPattern(c, 130, 185, PATTERN_PREV, 6, 16, Color.WHITE);
-        drawDotPattern(c, W - 130, 185, PATTERN_NEXT, 6, 16, Color.WHITE);
+        drawDotPattern(c, 130, 215, PATTERN_PREV, 6, 16, Color.WHITE);
+        drawDotPattern(c, W - 130, 215, PATTERN_NEXT, 6, 16, Color.WHITE);
 
         // 播放/暂停 图标（居中，红，呼应指南针组件的红点）
         String[] icon = isPlaying ? PATTERN_PAUSE : PATTERN_PLAY;
-        drawDotPattern(c, W / 2f, 185, icon, 6, 16, Color.rgb(255, 45, 45));
+        drawDotPattern(c, W / 2f, 215, icon, 6, 16, Color.rgb(255, 45, 45));
 
         // 音量条（底部横条：轨道 + 按比例填充）
         drawVolumeBar(c);
