@@ -41,7 +41,7 @@ public final class WidgetRenderer {
                 new ComponentName(context, RadioWidgetProvider.class));
         if (ids.length == 0) return;
 
-        Bitmap matrix = drawMatrix();
+        Bitmap matrix = drawMatrix(animationFrame, pressedAction);
         Bitmap content = drawContent(state, animationFrame, pressedAction);
         for (int id : ids) {
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_layout);
@@ -66,7 +66,7 @@ public final class WidgetRenderer {
         Bitmap bitmap = Bitmap.createBitmap(WIDTH, HEIGHT, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
         canvas.drawColor(Color.BLACK);
-        canvas.drawBitmap(drawMatrix(), 0, 0, paint);
+        canvas.drawBitmap(drawMatrix(frame, pressedAction), 0, 0, paint);
         canvas.drawBitmap(drawContent(state, frame, pressedAction), 0, 0, paint);
         return bitmap;
     }
@@ -83,8 +83,11 @@ public final class WidgetRenderer {
         return bitmap;
     }
 
-    private Bitmap drawMatrix() {
-        if (matrixCache != null && !matrixCache.isRecycled()) return matrixCache;
+    private Bitmap drawMatrix(int frame, String pressedAction) {
+        boolean interactive = RadioService.ACTION_TOGGLE.equals(pressedAction)
+                || RadioService.ACTION_PREV.equals(pressedAction)
+                || RadioService.ACTION_NEXT.equals(pressedAction);
+        if (!interactive && matrixCache != null && !matrixCache.isRecycled()) return matrixCache;
         Bitmap bitmap = Bitmap.createBitmap(WIDTH, HEIGHT, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
         final float cell = 24f;
@@ -95,9 +98,22 @@ public final class WidgetRenderer {
                 resetPaint();
                 boolean accent = ((row * 7 + column * 11) % 37) == 0;
                 int alpha = 14 + ((row * 3 + column * 5) % 4) * 5;
-                paint.setColor(accent
+                int color = accent
                         ? Color.argb(28, 255, 45, 45)
-                        : Color.argb(alpha, 255, 255, 255));
+                        : Color.argb(alpha, 255, 255, 255);
+                if (interactive) {
+                    int centerColumn = columnCount / 2;
+                    int centerRow = rowCount / 2;
+                    int distance = Math.abs(column - centerColumn) + Math.abs(row - centerRow);
+                    int wave = 2 + frame * 3;
+                    int band = Math.abs(distance - wave);
+                    if (band == 0 && ((row * 5 + column * 3) % 5 == 0)) {
+                        color = Color.argb(78, 255, 45, 45);
+                    } else if (band <= 1 && ((row * 2 + column * 7) % 5 == 1)) {
+                        color = Color.argb(46, 255, 255, 255);
+                    }
+                }
+                paint.setColor(color);
                 paint.setAntiAlias(false);
                 float left = column * cell;
                 float top = row * cell;
@@ -105,8 +121,8 @@ public final class WidgetRenderer {
                         Math.min(WIDTH, left + cell), Math.min(HEIGHT, top + cell), paint);
             }
         }
-        matrixCache = bitmap;
-        return matrixCache;
+        if (!interactive) matrixCache = bitmap;
+        return bitmap;
     }
 
     private void drawStation(Canvas canvas, Station station, WidgetStateStore.Snapshot state) {

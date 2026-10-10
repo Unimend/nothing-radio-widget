@@ -32,5 +32,13 @@ public class Station {
             new Station("浙江交通之声", "https://satellitepull.cnr.cn/live/wxzjjtgb/playlist.m3u8"),
             new Station("江苏新闻广播", "https://satellitepull.cnr.cn/live/wx32jsxwgb/playlist.m3u8"),
             new Station("江苏经典音乐", "https://satellitepull.cnr.cn/live/wx32jsjdlxyy/playlist.m3u8"),
+            new Station("北京新闻广播", "https://satellitepull.cnr.cn/live/wxbjxwgb/playlist.m3u8"),
+            new Station("广东音乐之声", "https://satellitepull.cnr.cn/live/wxgdyyzs/playlist.m3u8"),
+            new Station("深圳飞扬971", "https://satellitepull.cnr.cn/live/wxszfy971/playlist.m3u8"),
+            new Station("广西音乐广播", "https://satellitepull.cnr.cn/live/wx32gxwygb/playlist.m3u8"),
+            new Station("重庆音乐广播", "https://satellitepull.cnr.cn/live/wxcqyygb/playlist.m3u8"),
+            new Station("陕西新闻广播", "https://satellitepull.cnr.cn/live/wxsxxxwgb/playlist.m3u8"),
+            new Station("福建新闻广播", "https://satellitepull.cnr.cn/live/wx32fjxwgb/playlist.m3u8"),
+            new Station("河北综合广播", "https://satellitepull.cnr.cn/live/wxhebzhgb/playlist.m3u8"),
     };
 }

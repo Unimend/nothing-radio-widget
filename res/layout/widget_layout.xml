@@ -9,7 +9,8 @@
         android:id="@+id/background_matrix"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_margin="6dp"
+        android:background="@drawable/widget_card_background"
+        android:clipToOutline="true"
         android:scaleType="centerCrop" />
 
     <!-- 点阵位图主体（电台名 + 播放状态 + 箭头 + 音量条） -->

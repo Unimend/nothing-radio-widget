@@ -26,13 +26,13 @@
 
 ## 📦 直接安装
 
-仓库根目录的 `radiowidget.apk` 是当前稳定版（v2.2.1），可以直接下载安装；也可以从源码构建，产物位于 `build/radiowidget.apk`：
+仓库根目录的 `radiowidget.apk` 是当前稳定版（v2.3.0），可以直接下载安装；也可以从源码构建，产物位于 `build/radiowidget.apk`：
 
 ```bash
 adb install -r radiowidget.apk
 ```
 
-安装后：长按桌面空白 → 小组件 → 找到 **「点阵电台」** → 拖到桌面。组件固定为 3×1。v2 包名为 `com.unimend.nothingradio`，可与历史 v1 并存。v2.2.1 使用独立的圆角底板、无缝方格背景和等比内容三层结构，不依赖 Launcher 上报的尺寸比例；调频与播放动画只作用于中央按钮。
+安装后：长按桌面空白 → 小组件 → 找到 **「点阵电台」** → 拖到桌面。组件固定为 3×1。v2 包名为 `com.unimend.nothingradio`，可与历史 v1 并存。v2.3.0 在播放、暂停和切台时增加短暂的背景亮格波纹；左右按钮保持固定，方格层与黑色底板使用相同圆角裁切。
 
 ## 🔨 从源码构建
 
@@ -76,7 +76,7 @@ adb install -r radiowidget.apk
 - **HLS 播放**：CNR 流是 `.m3u8`（HLS），`MediaPlayer` 从 Android 4.0 起原生支持。
 - **绕过 CDN 403**：CNR 的 CDN 会拦截非常规 User-Agent，故用 `setDataSource(context, uri, headers)` 传自定义 `User-Agent`/`Referer` 头。
 - **后台播放**：只在播放或调频时运行前台服务；暂停后释放播放器和服务，降低空闲功耗。
-- **网络安全**：10 个电台全部使用 HTTPS，应用完全禁止明文流量；卫星源会继续跳转到 HTTPS CDN。
+- **网络安全**：18 个电台全部使用 HTTPS，应用完全禁止明文流量；卫星源会继续跳转到 HTTPS CDN。
 - **点阵绘制**：整块位图用 `Canvas` 绘制（因为 `RemoteViews` 无法直接设置自定义字体，只能画进位图），三个透明 `ImageView` 覆盖在按钮区做点击。
 
 ## 📄 字体来源
@@ -86,11 +86,11 @@ adb install -r radiowidget.apk
 
 ## 📡 电台源
 
-内置 10 个中文电台（央广 CNR + 中国国际广播电台 CRI + 省级电台），全部为实测可用流：
+内置 18 个中文电台（央广 CNR + 中国国际广播电台 CRI + 省级电台），全部为实测可用流：
 
 - **央广 CNR**（`ngcdn001/002.cnr.cn`）：中国之声、经济之声
 - **中国国际广播电台 CRI**（`sk.cri.cn`）：环球资讯、中文环球、南海之声、海峡飞虹
-- **省级电台**（`satellitepull.cnr.cn`）：浙江之声、浙江交通之声、江苏新闻广播、江苏经典音乐
+- **省级电台**（`satellitepull.cnr.cn`）：浙江之声、浙江交通、江苏新闻、江苏经典音乐、北京新闻、广东音乐、深圳飞扬971、广西音乐、重庆音乐、陕西新闻、福建新闻、河北综合
 
 > ⚠️ 注意：CNR 的 `ngcdn003+` 节点（音乐之声、文艺之声等）已关闭，请求会 403，勿使用。增删电台改 `Station.java` 的 `LIST` 数组即可。
 
@@ -100,4 +100,4 @@ MIT License，详见 [LICENSE](./LICENSE)。
 
 ---
 
-*一个在 OnePlus 7T Pro（Android 12，Magisk root）上从零定制、手写编译的 Nothing 风格电台组件。v2.2.1 已完成构建、安装、桌面交互、联网播放、HTTPS 电台源、状态持久化、无缝方格及 3×5/5×6 桌面网格适配验证。*
+*一个在 OnePlus 7T Pro（Android 12，Magisk root）上从零定制、手写编译的 Nothing 风格电台组件。v2.3.0 已完成构建、安装、桌面交互、18 台联网播放、HTTPS 链路、状态持久化、背景动画及 3×5/5×6 桌面网格适配验证。*

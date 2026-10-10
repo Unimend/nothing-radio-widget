@@ -257,10 +257,12 @@ public class RadioService extends Service {
         abandonAudioFocus();
         setState(state.stationIndex, state.volume,
                 WidgetStateStore.PlaybackState.PAUSED, message);
-        renderer.updateAll(state, 0, ACTION_TOGGLE);
+        animate(ACTION_TOGGLE, 4, 85);
         updateMediaSession();
-        stopForeground(true);
-        stopSelf();
+        handler.postDelayed(() -> {
+            stopForeground(true);
+            stopSelf();
+        }, 4 * 85L + 40L);
     }
 
     private void finishNonPlaybackAction() {
