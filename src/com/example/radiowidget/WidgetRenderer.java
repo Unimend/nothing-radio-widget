@@ -22,6 +22,11 @@ public final class WidgetRenderer {
             R.id.vol_0, R.id.vol_1, R.id.vol_2, R.id.vol_3, R.id.vol_4,
             R.id.vol_5, R.id.vol_6, R.id.vol_7, R.id.vol_8, R.id.vol_9
     };
+    private static final int[] WAVE_COLORS = new int[]{
+            Color.rgb(255, 55, 65), Color.rgb(255, 184, 55),
+            Color.rgb(66, 211, 255), Color.rgb(116, 226, 122),
+            Color.rgb(187, 112, 255), Color.rgb(255, 112, 190)
+    };
 
     private final Context context;
     private final Typeface zpix;
@@ -86,7 +91,8 @@ public final class WidgetRenderer {
     private Bitmap drawMatrix(int frame, String pressedAction) {
         boolean interactive = RadioService.ACTION_TOGGLE.equals(pressedAction)
                 || RadioService.ACTION_PREV.equals(pressedAction)
-                || RadioService.ACTION_NEXT.equals(pressedAction);
+                || RadioService.ACTION_NEXT.equals(pressedAction)
+                || RadioService.ACTION_AMBIENT.equals(pressedAction);
         if (!interactive && matrixCache != null && !matrixCache.isRecycled()) return matrixCache;
         Bitmap bitmap = Bitmap.createBitmap(WIDTH, HEIGHT, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
@@ -108,7 +114,11 @@ public final class WidgetRenderer {
                     int wave = 2 + frame * 3;
                     int band = Math.abs(distance - wave);
                     if (band == 0 && ((row * 5 + column * 3) % 5 == 0)) {
-                        color = Color.argb(78, 255, 45, 45);
+                        int pick = Math.abs(row * 17 + column * 31 + frame * 13)
+                                % WAVE_COLORS.length;
+                        int randomColor = WAVE_COLORS[pick];
+                        color = Color.argb(82, Color.red(randomColor),
+                                Color.green(randomColor), Color.blue(randomColor));
                     } else if (band <= 1 && ((row * 2 + column * 7) % 5 == 1)) {
                         color = Color.argb(46, 255, 255, 255);
                     }
@@ -145,10 +155,10 @@ public final class WidgetRenderer {
 
         resetPaint();
         paint.setTypeface(ndot);
-        paint.setTextSize(17f);
-        paint.setTextAlign(Paint.Align.CENTER);
+        paint.setTextSize(22f);
+        paint.setTextAlign(Paint.Align.LEFT);
         paint.setColor(statusColor(state.playbackState));
-        canvas.drawText(statusText(state), WIDTH / 2f, 88f, paint);
+        canvas.drawText(statusText(state), 28f, 29f, paint);
     }
 
     private void drawControls(Canvas canvas, WidgetStateStore.Snapshot state,
@@ -167,6 +177,7 @@ public final class WidgetRenderer {
             center = PATTERN_PLAY;
         }
         float pulse = state.playbackState == WidgetStateStore.PlaybackState.PLAYING
+                && RadioService.ACTION_TOGGLE.equals(pressedAction)
                 ? 4.8f + (frame % 3) * 0.35f : 4.8f;
         drawDotPattern(canvas, WIDTH / 2f, 162, center, pulse, 12f, red);
     }

@@ -38,6 +38,7 @@ public class RadioService extends Service {
     public static final String ACTION_PREV = "com.unimend.nothingradio.PREV";
     public static final String ACTION_VOLUME = "com.unimend.nothingradio.VOLUME";
     public static final String ACTION_PREVIEW = "com.unimend.nothingradio.PREVIEW";
+    public static final String ACTION_AMBIENT = "com.unimend.nothingradio.AMBIENT";
     public static final String EXTRA_VOLUME = "level";
 
     private static final String TAG = "RadioWidget";
@@ -45,6 +46,9 @@ public class RadioService extends Service {
     private static final int NOTIFICATION_ID = 20;
     private static final int CONNECT_TIMEOUT_MS = 15000;
     private static final int RETRY_DELAY_MS = 900;
+    private static final int AMBIENT_PULSE_INTERVAL_MS = 8000;
+    private static final int AMBIENT_PULSE_FRAMES = 5;
+    private static final int AMBIENT_PULSE_FRAME_DELAY_MS = 95;
     private static final String USER_AGENT =
             "Mozilla/5.0 (Linux; Android 12; HD1910) AppleWebKit/537.36 "
                     + "(KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36";
@@ -203,6 +207,7 @@ public class RadioService extends Service {
             setState(state.stationIndex, state.volume,
                     WidgetStateStore.PlaybackState.PLAYING, "播放中");
             animate(ACTION_TOGGLE, 3, 120);
+            scheduleAmbientPulse(token);
             updateMediaSession();
             updateNotification();
             Log.i(TAG, "开始播放: " + station.name);
@@ -290,6 +295,19 @@ public class RadioService extends Service {
         handler.postDelayed(() -> {
             if (animationToken == generation) renderer.updateAll(state, 0, null);
         }, frames * frameDelayMs);
+    }
+
+    private void scheduleAmbientPulse(int playbackToken) {
+        handler.postDelayed(() -> {
+            if (playbackToken != generation
+                    || state.playbackState != WidgetStateStore.PlaybackState.PLAYING
+                    || player == null || !prepared) {
+                return;
+            }
+            Log.i(TAG, "播放背景脉冲");
+            animate(ACTION_AMBIENT, AMBIENT_PULSE_FRAMES, AMBIENT_PULSE_FRAME_DELAY_MS);
+            scheduleAmbientPulse(playbackToken);
+        }, AMBIENT_PULSE_INTERVAL_MS);
     }
 
     private boolean requestAudioFocus() {
