@@ -26,13 +26,13 @@
 
 ## 📦 直接安装
 
-仓库根目录的 `radiowidget.apk` 是当前稳定版（v2.2.0），可以直接下载安装；也可以从源码构建，产物位于 `build/radiowidget.apk`：
+仓库根目录的 `radiowidget.apk` 是当前稳定版（v2.2.1），可以直接下载安装；也可以从源码构建，产物位于 `build/radiowidget.apk`：
 
 ```bash
 adb install -r radiowidget.apk
 ```
 
-安装后：长按桌面空白 → 小组件 → 找到 **「点阵电台」** → 拖到桌面。组件固定为 3×1。v2 包名为 `com.unimend.nothingradio`，可与历史 v1 并存，便于对比后再清理旧版。v2.2.0 使用独立的圆角底板、等比方块矩阵和等比内容三层结构，不依赖 Launcher 上报的尺寸比例，可适应不同桌面网格与横竖屏。
+安装后：长按桌面空白 → 小组件 → 找到 **「点阵电台」** → 拖到桌面。组件固定为 3×1。v2 包名为 `com.unimend.nothingradio`，可与历史 v1 并存。v2.2.1 使用独立的圆角底板、无缝方格背景和等比内容三层结构，不依赖 Launcher 上报的尺寸比例；调频与播放动画只作用于中央按钮。
 
 ## 🔨 从源码构建
 
@@ -100,4 +100,4 @@ MIT License，详见 [LICENSE](./LICENSE)。
 
 ---
 
-*一个在 OnePlus 7T Pro（Android 12，Magisk root）上从零定制、手写编译的 Nothing 风格电台组件。v2.2.0 已完成构建、安装、桌面交互、联网播放、HTTPS 电台源、状态持久化、方块矩阵及 3×5/5×6 桌面网格适配验证。*
+*一个在 OnePlus 7T Pro（Android 12，Magisk root）上从零定制、手写编译的 Nothing 风格电台组件。v2.2.1 已完成构建、安装、桌面交互、联网播放、HTTPS 电台源、状态持久化、无缝方格及 3×5/5×6 桌面网格适配验证。*

@@ -27,6 +27,7 @@ public final class WidgetRenderer {
     private final Typeface zpix;
     private final Typeface ndot;
     private final Paint paint = new Paint();
+    private Bitmap matrixCache;
 
     public WidgetRenderer(Context context) {
         this.context = context.getApplicationContext();
@@ -40,7 +41,7 @@ public final class WidgetRenderer {
                 new ComponentName(context, RadioWidgetProvider.class));
         if (ids.length == 0) return;
 
-        Bitmap matrix = drawMatrix(state, animationFrame);
+        Bitmap matrix = drawMatrix();
         Bitmap content = drawContent(state, animationFrame, pressedAction);
         for (int id : ids) {
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_layout);
@@ -65,7 +66,7 @@ public final class WidgetRenderer {
         Bitmap bitmap = Bitmap.createBitmap(WIDTH, HEIGHT, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
         canvas.drawColor(Color.BLACK);
-        canvas.drawBitmap(drawMatrix(state, frame), 0, 0, paint);
+        canvas.drawBitmap(drawMatrix(), 0, 0, paint);
         canvas.drawBitmap(drawContent(state, frame, pressedAction), 0, 0, paint);
         return bitmap;
     }
@@ -82,34 +83,30 @@ public final class WidgetRenderer {
         return bitmap;
     }
 
-    private Bitmap drawMatrix(WidgetStateStore.Snapshot state, int frame) {
+    private Bitmap drawMatrix() {
+        if (matrixCache != null && !matrixCache.isRecycled()) return matrixCache;
         Bitmap bitmap = Bitmap.createBitmap(WIDTH, HEIGHT, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
-        int phase = (state.playbackState == WidgetStateStore.PlaybackState.TUNING
-                || state.playbackState == WidgetStateStore.PlaybackState.PLAYING)
-                ? frame % 3 : 0;
-        final float stepX = 27f;
-        final float stepY = 25f;
-        int rowCount = (int) Math.ceil(HEIGHT / stepY) + 1;
-        int columnCount = (int) Math.ceil(WIDTH / stepX) + 1;
+        final float cell = 24f;
+        int rowCount = (int) Math.ceil(HEIGHT / cell);
+        int columnCount = (int) Math.ceil(WIDTH / cell);
         for (int row = 0; row < rowCount; row++) {
-            float y = 18f + row * stepY;
-            float rowOffset = (row % 2) * (stepX / 2f) + phase * 2f;
             for (int column = 0; column < columnCount; column++) {
-                float x = 12f + column * stepX + rowOffset;
-                if (x > WIDTH - 10f || y > HEIGHT - 10f) continue;
                 resetPaint();
                 boolean accent = ((row * 7 + column * 11) % 37) == 0;
-                int alpha = 30 + ((row + column + phase) % 3) * 7;
+                int alpha = 14 + ((row * 3 + column * 5) % 4) * 5;
                 paint.setColor(accent
-                        ? Color.argb(42, 255, 45, 45)
+                        ? Color.argb(28, 255, 45, 45)
                         : Color.argb(alpha, 255, 255, 255));
                 paint.setAntiAlias(false);
-                float half = accent ? 4.0f : 3.2f;
-                canvas.drawRect(x - half, y - half, x + half, y + half, paint);
+                float left = column * cell;
+                float top = row * cell;
+                canvas.drawRect(left, top,
+                        Math.min(WIDTH, left + cell), Math.min(HEIGHT, top + cell), paint);
             }
         }
-        return bitmap;
+        matrixCache = bitmap;
+        return matrixCache;
     }
 
     private void drawStation(Canvas canvas, Station station, WidgetStateStore.Snapshot state) {
@@ -142,14 +139,8 @@ public final class WidgetRenderer {
                               int frame, String pressedAction) {
         int white = Color.WHITE;
         int red = Color.rgb(255, 45, 45);
-        int prevColor = RadioService.ACTION_PREV.equals(pressedAction) ? red : white;
-        int nextColor = RadioService.ACTION_NEXT.equals(pressedAction) ? red : white;
-
-        float tuningOffset = state.playbackState == WidgetStateStore.PlaybackState.TUNING
-                ? ((frame % 4) - 1.5f) * 6f : 0f;
-        drawDotPattern(canvas, 100 + tuningOffset, 162, PATTERN_PREV, 4.8f, 12f, prevColor);
-        drawDotPattern(canvas, WIDTH - 100 + tuningOffset, 162,
-                PATTERN_NEXT, 4.8f, 12f, nextColor);
+        drawDotPattern(canvas, 100, 162, PATTERN_PREV, 4.8f, 12f, white);
+        drawDotPattern(canvas, WIDTH - 100, 162, PATTERN_NEXT, 4.8f, 12f, white);
 
         String[] center;
         if (state.playbackState == WidgetStateStore.PlaybackState.PLAYING) {

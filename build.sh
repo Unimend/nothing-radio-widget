@@ -32,7 +32,7 @@ echo "[2/7] Link resources and explicit SDK metadata"
     --manifest "$PROJECT_DIR/AndroidManifest.xml" \
     -R "$OUT/compiled/res.zip" --java "$OUT/gen" -A "$PROJECT_DIR/assets" \
     --auto-add-overlay --min-sdk-version 23 --target-sdk-version 31 \
-    --version-code 6 --version-name 2.2.0
+    --version-code 7 --version-name 2.2.1
 
 echo "[3/7] Compile Java"
 find "$PROJECT_DIR/src" "$OUT/gen" -type f -name '*.java' -print0 \
