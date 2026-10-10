@@ -4,6 +4,7 @@ import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Bundle;
 
 /**
  * Widget lifecycle entry. Adding a widget only renders the persisted idle state;
@@ -13,6 +14,15 @@ public class RadioWidgetProvider extends AppWidgetProvider {
 
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
+        WidgetStateStore store = new WidgetStateStore(context);
+        WidgetStateStore.Snapshot state = RadioService.isActive()
+                ? store.load() : store.makeInactiveIfStale();
+        new WidgetRenderer(context).updateAll(state, 0, null);
+    }
+
+    @Override
+    public void onAppWidgetOptionsChanged(Context context, AppWidgetManager appWidgetManager,
+                                          int appWidgetId, Bundle newOptions) {
         WidgetStateStore store = new WidgetStateStore(context);
         WidgetStateStore.Snapshot state = RadioService.isActive()
                 ? store.load() : store.makeInactiveIfStale();

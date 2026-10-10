@@ -5,18 +5,24 @@ import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.net.Uri;
+import android.os.Bundle;
+import android.util.Log;
 import android.widget.RemoteViews;
 
 /** Draws the Nothing-style bitmap and wires all widget hit targets. */
 public final class WidgetRenderer {
+    private static final String TAG = "NothingRadioRender";
     public static final int WIDTH = 900;
     public static final int HEIGHT = 300;
+    private static final int MIN_BITMAP_HEIGHT = 180;
+    private static final int MAX_BITMAP_HEIGHT = 540;
 
     private static final int[] VOLUME_IDS = new int[]{
             R.id.vol_0, R.id.vol_1, R.id.vol_2, R.id.vol_3, R.id.vol_4,
@@ -40,8 +46,9 @@ public final class WidgetRenderer {
                 new ComponentName(context, RadioWidgetProvider.class));
         if (ids.length == 0) return;
 
-        Bitmap bitmap = draw(state, animationFrame, pressedAction);
         for (int id : ids) {
+            int[] size = bitmapSizeForWidget(manager, id);
+            Bitmap bitmap = draw(state, animationFrame, pressedAction, size[0], size[1]);
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_layout);
             views.setImageViewBitmap(R.id.display, bitmap);
             views.setOnClickPendingIntent(R.id.btn_prev,
@@ -60,23 +67,63 @@ public final class WidgetRenderer {
     }
 
     public Bitmap draw(WidgetStateStore.Snapshot state, int frame, String pressedAction) {
-        Bitmap bitmap = Bitmap.createBitmap(WIDTH, HEIGHT, Bitmap.Config.ARGB_8888);
+        return draw(state, frame, pressedAction, WIDTH, HEIGHT);
+    }
+
+    private Bitmap draw(WidgetStateStore.Snapshot state, int frame, String pressedAction,
+                        int bitmapWidth, int bitmapHeight) {
+        Bitmap bitmap = Bitmap.createBitmap(bitmapWidth, bitmapHeight, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
-        drawBackground(canvas, state, frame);
+        drawBackground(canvas, state, frame, bitmapWidth, bitmapHeight);
+
+        // Keep type, dots and icons geometrically correct at every launcher aspect ratio.
+        // Any extra space belongs to the background instead of stretching the content.
+        float scale = Math.min(bitmapWidth / (float) WIDTH, bitmapHeight / (float) HEIGHT);
+        float offsetX = (bitmapWidth - WIDTH * scale) / 2f;
+        float offsetY = (bitmapHeight - HEIGHT * scale) / 2f;
+        int checkpoint = canvas.save();
+        canvas.translate(offsetX, offsetY);
+        canvas.scale(scale, scale);
 
         Station station = Station.LIST[state.stationIndex];
         drawStation(canvas, station, state);
         drawControls(canvas, state, frame, pressedAction);
         drawVolume(canvas, state.volume, frame,
                 RadioService.ACTION_VOLUME.equals(pressedAction));
+        canvas.restoreToCount(checkpoint);
         return bitmap;
     }
 
-    private void drawBackground(Canvas canvas, WidgetStateStore.Snapshot state, int frame) {
+    private int[] bitmapSizeForWidget(AppWidgetManager manager, int widgetId) {
+        Bundle options = manager.getAppWidgetOptions(widgetId);
+        int minWidthDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 200);
+        int maxWidthDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, minWidthDp);
+        int minHeightDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 65);
+        int maxHeightDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, minHeightDp);
+
+        // AppWidget options contain portrait and landscape bounds. Select the active orientation;
+        // fixed-size launchers generally report identical values, so this also covers those.
+        boolean landscape = context.getResources().getConfiguration().orientation
+                == Configuration.ORIENTATION_LANDSCAPE;
+        int widthDp = Math.max(1, landscape
+                ? Math.max(minWidthDp, maxWidthDp) : Math.min(minWidthDp, maxWidthDp));
+        int heightDp = Math.max(1, landscape
+                ? Math.min(minHeightDp, maxHeightDp) : Math.max(minHeightDp, maxHeightDp));
+        int bitmapHeight = Math.round(WIDTH * (heightDp / (float) widthDp));
+        bitmapHeight = Math.max(MIN_BITMAP_HEIGHT, Math.min(MAX_BITMAP_HEIGHT, bitmapHeight));
+        Log.i(TAG, "widget=" + widgetId + " options=" + minWidthDp + "x" + minHeightDp
+                + ".." + maxWidthDp + "x" + maxHeightDp + " bitmap=" + WIDTH + "x"
+                + bitmapHeight);
+        return new int[]{WIDTH, bitmapHeight};
+    }
+
+    private void drawBackground(Canvas canvas, WidgetStateStore.Snapshot state, int frame,
+                                int width, int height) {
         resetPaint();
         paint.setColor(Color.BLACK);
         paint.setAntiAlias(true);
-        canvas.drawRoundRect(0, 0, WIDTH, HEIGHT, 42f, 42f, paint);
+        float corner = Math.min(42f, Math.min(width, height) * 0.14f);
+        canvas.drawRoundRect(0, 0, width, height, corner, corner, paint);
 
         // Low-contrast staggered dot matrix. It remains almost invisible at rest,
         // while short interaction animations shift its phase by a few pixels.
@@ -85,12 +132,14 @@ public final class WidgetRenderer {
                 ? frame % 3 : 0;
         final float stepX = 27f;
         final float stepY = 25f;
-        for (int row = 0; row < 12; row++) {
+        int rowCount = (int) Math.ceil(height / stepY) + 1;
+        int columnCount = (int) Math.ceil(width / stepX) + 1;
+        for (int row = 0; row < rowCount; row++) {
             float y = 18f + row * stepY;
             float rowOffset = (row % 2) * (stepX / 2f) + phase * 2f;
-            for (int column = 0; column < 31; column++) {
+            for (int column = 0; column < columnCount; column++) {
                 float x = 12f + column * stepX + rowOffset;
-                if (x > WIDTH - 10f || y > HEIGHT - 10f) continue;
+                if (x > width - 10f || y > height - 10f) continue;
                 resetPaint();
                 boolean accent = ((row * 7 + column * 11) % 37) == 0;
                 int alpha = 30 + ((row + column + phase) % 3) * 7;
