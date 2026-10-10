@@ -32,7 +32,8 @@ Write-Host "===== 1. aapt2 compile resources =====" -ForegroundColor Cyan
 
 Write-Host "===== 2. aapt2 link (pack assets fonts) =====" -ForegroundColor Cyan
 & "$BT\aapt2.exe" link -o "$OUT\base.apk" -I $PLATFORM --manifest "$PROJ\AndroidManifest.xml" `
-    -R "$OUT\compiled\res.zip" --java "$OUT\gen" -A "$PROJ\assets" --auto-add-overlay
+    -R "$OUT\compiled\res.zip" --java "$OUT\gen" -A "$PROJ\assets" --auto-add-overlay `
+    --min-sdk-version 23 --target-sdk-version 31 --version-code 4 --version-name "2.1.1"
 
 Write-Host "===== 3. javac compile Java =====" -ForegroundColor Cyan
 $srcs = (Get-ChildItem "$PROJ\src" -Recurse -Filter *.java).FullName

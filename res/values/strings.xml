@@ -2,4 +2,7 @@
 <resources>
     <string name="app_name">点阵电台</string>
     <string name="widget_description">Nothing 风格点阵电台小组件</string>
+    <string name="preview_station">中国之声 · FM 01</string>
+    <string name="preview_controls">‹        ▶        ›</string>
+    <string name="preview_volume">VOL  ● ● ● ● ○ ○ ○ ○ ○ ○</string>
 </resources>

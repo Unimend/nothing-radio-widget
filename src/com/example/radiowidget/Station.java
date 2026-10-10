@@ -1,4 +1,4 @@
-package com.example.radiowidget;
+package com.unimend.nothingradio;
 
 /**
  * 电台数据类：名称 + 流地址。
@@ -20,17 +20,17 @@ public class Station {
 
     public static final Station[] LIST = new Station[]{
             // CNR 央广（ngcdn001/002 节点可用）
-            new Station("中国之声", "http://ngcdn001.cnr.cn/live/zgzs/index.m3u8"),
-            new Station("经济之声", "http://ngcdn002.cnr.cn/live/jjzs/index.m3u8"),
+            new Station("中国之声", "https://ngcdn001.cnr.cn/live/zgzs/index.m3u8"),
+            new Station("经济之声", "https://ngcdn002.cnr.cn/live/jjzs/index.m3u8"),
             // CRI 中国国际广播电台（sk.cri.cn，节点可用）
-            new Station("环球资讯", "http://sk.cri.cn/905.m3u8"),
-            new Station("中文环球", "http://sk.cri.cn/hyhq.m3u8"),
-            new Station("南海之声", "http://sk.cri.cn/nhzs.m3u8"),
-            new Station("海峡飞虹", "http://sk.cri.cn/hxfh.m3u8"),
+            new Station("环球资讯", "https://sk.cri.cn/905.m3u8"),
+            new Station("中文环球", "https://sk.cri.cn/hyhq.m3u8"),
+            new Station("南海之声", "https://sk.cri.cn/nhzs.m3u8"),
+            new Station("海峡飞虹", "https://sk.cri.cn/hxfh.m3u8"),
             // 省级电台（satellitepull.cnr.cn，卫星拉流，可用）
-            new Station("浙江之声", "http://satellitepull.cnr.cn/live/wxzjzs/playlist.m3u8"),
-            new Station("浙江交通之声", "http://satellitepull.cnr.cn/live/wxzjjtgb/playlist.m3u8"),
-            new Station("江苏新闻广播", "http://satellitepull.cnr.cn/live/wx32jsxwgb/playlist.m3u8"),
-            new Station("江苏经典音乐", "http://satellitepull.cnr.cn/live/wx32jsjdlxyy/playlist.m3u8"),
+            new Station("浙江之声", "https://satellitepull.cnr.cn/live/wxzjzs/playlist.m3u8"),
+            new Station("浙江交通之声", "https://satellitepull.cnr.cn/live/wxzjjtgb/playlist.m3u8"),
+            new Station("江苏新闻广播", "https://satellitepull.cnr.cn/live/wx32jsxwgb/playlist.m3u8"),
+            new Station("江苏经典音乐", "https://satellitepull.cnr.cn/live/wx32jsjdlxyy/playlist.m3u8"),
     };
 }
