@@ -22,6 +22,10 @@ public final class WidgetRenderer {
     private static final float CENTER_Y = HEIGHT / 2f;
     private static final float SIDE_CONTROL_INSET = 100f;
     private static final float CONTENT_EDGE_INSET = 28f;
+    private static final float HEADER_EDGE_INSET = 42f;
+    private static final float HERO_CENTER_Y = 160f;
+    private static final float HERO_TOP = 78f;
+    private static final float HERO_BOTTOM = 238f;
 
     private static final int[] VOLUME_IDS = new int[]{
             R.id.vol_0, R.id.vol_1, R.id.vol_2, R.id.vol_3, R.id.vol_4,
@@ -110,7 +114,7 @@ public final class WidgetRenderer {
         paint.setTextSize(42f);
         paint.setTextAlign(Paint.Align.CENTER);
         paint.setAntiAlias(false);
-        canvas.drawText(station.name, CENTER_X, 58f, paint);
+        canvas.drawText(station.name, CENTER_X, 54f, paint);
 
         resetPaint();
         paint.setColor(Color.argb(175, 255, 255, 255));
@@ -119,7 +123,7 @@ public final class WidgetRenderer {
         paint.setTextAlign(Paint.Align.RIGHT);
         paint.setAntiAlias(true);
         String number = String.format(java.util.Locale.US, "FM %02d", state.stationIndex + 1);
-        canvas.drawText(number, WIDTH - CONTENT_EDGE_INSET, 28f, paint);
+        canvas.drawText(number, WIDTH - HEADER_EDGE_INSET, 42f, paint);
 
     }
 
@@ -145,16 +149,17 @@ public final class WidgetRenderer {
             // Fit against the real glyph bounds, then center the actual painted pixels.
             // This avoids relying on a guessed baseline or on font metrics with empty space.
             Rect bounds = new Rect();
-            paint.getTextBounds(text, 0, text.length(), bounds);
+            String sizingReference = "TUNING";
+            paint.getTextBounds(sizingReference, 0, sizingReference.length(), bounds);
             float availableWidth = WIDTH - 2f * 24f;
-            float availableHeight = HEIGHT - 2f * 26f;
+            float availableHeight = HERO_BOTTOM - HERO_TOP;
             float fitScale = Math.min(1f, Math.min(
                     availableWidth / Math.max(1f, bounds.width()),
                     availableHeight / Math.max(1f, bounds.height())));
             paint.setTextSize(paint.getTextSize() * fitScale);
             paint.getTextBounds(text, 0, text.length(), bounds);
             float textOriginX = CENTER_X - (bounds.left + bounds.right) / 2f;
-            float baseline = CENTER_Y - (bounds.top + bounds.bottom) / 2f;
+            float baseline = HERO_CENTER_Y - (bounds.top + bounds.bottom) / 2f;
             paint.setTextAlign(Paint.Align.LEFT);
             canvas.drawText(text, textOriginX, baseline, paint);
 
@@ -185,8 +190,25 @@ public final class WidgetRenderer {
                 || amplitude == null || amplitude.length < 2) return;
         float fast = Math.max(0f, Math.min(1f, amplitude[0]));
         float slow = Math.max(0f, Math.min(1f, amplitude[1]));
-        drawAmplitudeLine(canvas, 18f, fast, 175);
-        drawAmplitudeLine(canvas, 32f, slow, 105);
+        float gapCenter = heroVisibleLeft("ONAIR") / 2f;
+        drawAmplitudeLine(canvas, gapCenter - 7f, fast, 175);
+        drawAmplitudeLine(canvas, gapCenter + 7f, slow, 105);
+    }
+
+    private float heroVisibleLeft(String text) {
+        resetPaint();
+        paint.setTypeface(doto);
+        paint.setTextSize(300f);
+        paint.setAntiAlias(true);
+        Rect bounds = new Rect();
+        String sizingReference = "TUNING";
+        paint.getTextBounds(sizingReference, 0, sizingReference.length(), bounds);
+        float fitScale = Math.min(1f, Math.min(
+                (WIDTH - 2f * 24f) / Math.max(1f, bounds.width()),
+                (HERO_BOTTOM - HERO_TOP) / Math.max(1f, bounds.height())));
+        paint.setTextSize(paint.getTextSize() * fitScale);
+        paint.getTextBounds(text, 0, text.length(), bounds);
+        return CENTER_X - bounds.width() / 2f;
     }
 
     private void drawAmplitudeLine(Canvas canvas, float centerX, float amplitude, int maxAlpha) {
