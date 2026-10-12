@@ -70,6 +70,7 @@ public class RadioService extends Service {
     private int failedAttempts;
     private long foregroundAnimationUntilMs;
     private volatile float[] audioBands = new float[5];
+    private final float[] audioBandPeaks = {0.01f, 0.01f, 0.01f, 0.01f, 0.01f};
 
     public static boolean isActive() {
         return active;
@@ -352,9 +353,15 @@ public class RadioService extends Service {
                 total += Math.sqrt(real * real + imaginary * imaginary);
             }
             double average = total / Math.max(1, end - start);
-            float normalized = Math.min(1f, (float) (Math.log1p(average) / 4.8d));
+            float raw = Math.min(1f, (float) (Math.log1p(average) / 4.8d));
+            // Each frequency range gets its own slowly decaying peak. This
+            // compensates for speech/music naturally carrying more low-band
+            // energy, so O does not remain permanently brighter than NAIR.
+            audioBandPeaks[band] = Math.max(raw, audioBandPeaks[band] * 0.992f);
+            float normalized = Math.min(1f, raw / Math.max(0.12f, audioBandPeaks[band]));
+            normalized = Math.max(0f, (normalized - 0.20f) / 0.80f);
             float old = previous != null && band < previous.length ? previous[band] : 0f;
-            next[band] = old * 0.58f + normalized * 0.42f;
+            next[band] = old * 0.64f + normalized * 0.36f;
         }
         audioBands = next;
     }
@@ -569,6 +576,9 @@ public class RadioService extends Service {
             visualizer = null;
         }
         audioBands = new float[5];
+        for (int band = 0; band < audioBandPeaks.length; band++) {
+            audioBandPeaks[band] = 0.01f;
+        }
     }
 
     private void dumpPreview() {

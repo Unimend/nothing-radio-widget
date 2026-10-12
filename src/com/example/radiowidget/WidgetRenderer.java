@@ -176,7 +176,7 @@ public final class WidgetRenderer {
         for (int index = 0; index < count; index++) {
             float energy = Math.max(0f, Math.min(1f, audioBands[index]));
             float letterX = textOriginX + paint.measureText(text, 0, index);
-            paint.setColor(Color.argb(Math.round(42f + energy * 213f), 255, 55, 65));
+            paint.setColor(Color.argb(Math.round(28f + energy * 122f), 255, 55, 65));
             canvas.drawText(text, index, index + 1, letterX, baseline, paint);
         }
     }
