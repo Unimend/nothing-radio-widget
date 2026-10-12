@@ -27,12 +27,6 @@ public final class WidgetRenderer {
             R.id.vol_0, R.id.vol_1, R.id.vol_2, R.id.vol_3, R.id.vol_4,
             R.id.vol_5, R.id.vol_6, R.id.vol_7, R.id.vol_8, R.id.vol_9
     };
-    private static final int[] WAVE_COLORS = new int[]{
-            Color.rgb(255, 55, 65), Color.rgb(255, 184, 55),
-            Color.rgb(66, 211, 255), Color.rgb(116, 226, 122),
-            Color.rgb(187, 112, 255), Color.rgb(255, 112, 190)
-    };
-
     private final Context context;
     private final Typeface zpix;
     private final Typeface ndot;
@@ -51,7 +45,7 @@ public final class WidgetRenderer {
                 new ComponentName(context, RadioWidgetProvider.class));
         if (ids.length == 0) return;
 
-        Bitmap matrix = drawMatrix(animationFrame, pressedAction);
+        Bitmap matrix = drawMatrix();
         Bitmap content = drawContent(state, animationFrame, pressedAction);
         for (int id : ids) {
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_layout);
@@ -76,7 +70,7 @@ public final class WidgetRenderer {
         Bitmap bitmap = Bitmap.createBitmap(WIDTH, HEIGHT, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
         canvas.drawColor(Color.BLACK);
-        canvas.drawBitmap(drawMatrix(frame, pressedAction), 0, 0, paint);
+        canvas.drawBitmap(drawMatrix(), 0, 0, paint);
         canvas.drawBitmap(drawContent(state, frame, pressedAction), 0, 0, paint);
         return bitmap;
     }
@@ -86,7 +80,7 @@ public final class WidgetRenderer {
         Bitmap bitmap = Bitmap.createBitmap(WIDTH, HEIGHT, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
         Station station = Station.LIST[state.stationIndex];
-        drawStatusLayer(canvas, state.playbackState);
+        drawStatusLayer(canvas, state.playbackState, frame, pressedAction);
         drawStation(canvas, station, state);
         drawControls(canvas, state, frame, pressedAction);
         drawVolume(canvas, state.volume, frame,
@@ -94,12 +88,8 @@ public final class WidgetRenderer {
         return bitmap;
     }
 
-    private Bitmap drawMatrix(int frame, String pressedAction) {
-        boolean interactive = RadioService.ACTION_TOGGLE.equals(pressedAction)
-                || RadioService.ACTION_PREV.equals(pressedAction)
-                || RadioService.ACTION_NEXT.equals(pressedAction)
-                || RadioService.ACTION_AMBIENT.equals(pressedAction);
-        if (!interactive && matrixCache != null && !matrixCache.isRecycled()) return matrixCache;
+    private Bitmap drawMatrix() {
+        if (matrixCache != null && !matrixCache.isRecycled()) return matrixCache;
         Bitmap bitmap = Bitmap.createBitmap(WIDTH, HEIGHT, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
         final float cell = 24f;
@@ -113,22 +103,6 @@ public final class WidgetRenderer {
                 int color = accent
                         ? Color.argb(28, 255, 45, 45)
                         : Color.argb(alpha, 255, 255, 255);
-                if (interactive) {
-                    int centerColumn = columnCount / 2;
-                    int centerRow = rowCount / 2;
-                    int distance = Math.abs(column - centerColumn) + Math.abs(row - centerRow);
-                    int wave = 2 + frame * 3;
-                    int band = Math.abs(distance - wave);
-                    if (band == 0 && ((row * 5 + column * 3) % 5 == 0)) {
-                        int pick = Math.abs(row * 17 + column * 31 + frame * 13)
-                                % WAVE_COLORS.length;
-                        int randomColor = WAVE_COLORS[pick];
-                        color = Color.argb(82, Color.red(randomColor),
-                                Color.green(randomColor), Color.blue(randomColor));
-                    } else if (band <= 1 && ((row * 2 + column * 7) % 5 == 1)) {
-                        color = Color.argb(46, 255, 255, 255);
-                    }
-                }
                 paint.setColor(color);
                 paint.setAntiAlias(false);
                 float left = column * cell;
@@ -137,8 +111,8 @@ public final class WidgetRenderer {
                         Math.min(WIDTH, left + cell), Math.min(HEIGHT, top + cell), paint);
             }
         }
-        if (!interactive) matrixCache = bitmap;
-        return bitmap;
+        matrixCache = bitmap;
+        return matrixCache;
     }
 
     private void drawStation(Canvas canvas, Station station, WidgetStateStore.Snapshot state) {
@@ -161,7 +135,8 @@ public final class WidgetRenderer {
 
     }
 
-    private void drawStatusLayer(Canvas canvas, WidgetStateStore.PlaybackState state) {
+    private void drawStatusLayer(Canvas canvas, WidgetStateStore.PlaybackState state,
+                                 int frame, String pressedAction) {
         boolean hero = state == WidgetStateStore.PlaybackState.PLAYING
                 || state == WidgetStateStore.PlaybackState.PAUSED;
         resetPaint();
@@ -189,12 +164,30 @@ public final class WidgetRenderer {
             paint.getTextBounds(text, 0, text.length(), bounds);
             float baseline = CENTER_Y - (bounds.top + bounds.bottom) / 2f;
             canvas.drawText(text, CENTER_X, baseline, paint);
+
+            if (state == WidgetStateStore.PlaybackState.PLAYING
+                    && RadioService.ACTION_AMBIENT.equals(pressedAction)) {
+                drawHighlightedOnAirLetter(canvas, text, baseline, frame);
+            }
         } else {
             paint.setTextSize(24f);
             paint.setTextAlign(Paint.Align.LEFT);
             paint.setColor(statusColor(state));
             canvas.drawText(statusText(state), CONTENT_EDGE_INSET, 30f, paint);
         }
+    }
+
+    private void drawHighlightedOnAirLetter(Canvas canvas, String text,
+                                            float baseline, int frame) {
+        final int[] letterIndexes = new int[]{0, 1, 3, 4, 5};
+        int textIndex = letterIndexes[Math.floorMod(frame, letterIndexes.length)];
+        float textWidth = paint.measureText(text);
+        float left = CENTER_X - textWidth / 2f;
+        float letterX = left + paint.measureText(text, 0, textIndex);
+
+        paint.setTextAlign(Paint.Align.LEFT);
+        paint.setColor(Color.argb(210, 255, 55, 65));
+        canvas.drawText(text, textIndex, textIndex + 1, letterX, baseline, paint);
     }
 
     private void drawControls(Canvas canvas, WidgetStateStore.Snapshot state,
