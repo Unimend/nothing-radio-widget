@@ -7,7 +7,7 @@
 ## ✨ 功能特性
 
 - **3×1 桌面小组件**，不透明黑色圆角卡片背景（Nothing 风格）
-- **点阵中文电台名**（Zpix 最像素字体）+ **Ndot 字体**（英文/数字）
+- **点阵中文电台名**（Zpix 最像素字体）+ **Doto 700**（英文/数字）
 - **点阵图标**：上一台 `◀` / 播放 `▶` / 暂停 `❚❚` / 下一台 `▶`（红白圆点拼成）
 - **系统 MediaPlayer** 播放 HLS 流，播放时使用前台服务 + MediaSession
 - **真实状态机**：待机、调频、播放、暂停、离线、无信号和错误状态互不混淆
@@ -26,13 +26,13 @@
 
 ## 📦 直接安装
 
-仓库根目录的 `radiowidget.apk` 是当前稳定版（v2.4.0），可以直接下载安装；也可以从源码构建，产物位于 `build/radiowidget.apk`：
+仓库根目录的 `radiowidget.apk` 是当前稳定版（v2.4.1），可以直接下载安装；也可以从源码构建，产物位于 `build/radiowidget.apk`：
 
 ```bash
 adb install -r radiowidget.apk
 ```
 
-安装后：长按桌面空白 → 小组件 → 找到 **「点阵电台」** → 拖到桌面。组件固定为 3×1。v2 包名为 `com.unimend.nothingradio`，可与历史 v1 并存。v2.4.0 会根据真实字形边界把 `PAUSED` 与 `ON AIR` 放大到背景可容纳的最大尺寸，并将大字与三个控制按钮严格对齐到组件中心轴；播放期间 `ON AIR` 会逐字点亮，背景方格始终静止。
+安装后：长按桌面空白 → 小组件 → 找到 **「点阵电台」** → 拖到桌面。组件固定为 3×1。v2 包名为 `com.unimend.nothingradio`，可与历史 v1 并存。v2.4.1 使用 Doto 700 显示英文和数字，并根据真实字形边界把 `PAUSED` 与 `ON AIR` 放大到背景可容纳的最大尺寸；播放期间 `ON AIR` 会逐字点亮，背景方格始终静止。
 
 ## 🔨 从源码构建
 
@@ -68,7 +68,8 @@ adb install -r radiowidget.apk
 | `WidgetStateStore.java` | 使用 SharedPreferences 持久化台号、音量和真实状态 |
 | `WidgetRenderer.java` | Nothing 点阵绘制、有限帧反馈和唯一 PendingIntent 绑定 |
 | `Station.java` | 电台清单（名称 + 流地址），改这里即可增删电台 |
-| `assets/ndot.otf` | Ndot 点阵字体（Nothing 风格，英文/数字） |
+| `assets/doto.ttf` | Doto 700 点阵字体（英文/数字，SIL OFL 1.1） |
+| `assets/DOTO-OFL.txt` | Doto 字体许可证 |
 | `assets/zpix.ttf` | Zpix 最像素字体（中文点阵，12px） |
 
 ### 关键实现点
@@ -81,7 +82,7 @@ adb install -r radiowidget.apk
 
 ## 📄 字体来源
 
-- `assets/ndot.otf`（NDot57Caps）：提取自 [rjwarrier/KWGT-Widgets](https://github.com/rjwarrier/KWGT-Widgets) 的 Nothing 风格预设，版权归原作者 / Nothing。
+- `assets/doto.ttf`（Doto 700）：来自 [Google Fonts / Doto](https://github.com/google/fonts/tree/main/ofl/doto)，采用 SIL Open Font License 1.1。
 - `assets/zpix.ttf`（Zpix 最像素）：来自 [SolidZORO/zpix-pixel-font](https://github.com/SolidZORO/zpix-pixel-font)（v3.3.0），开源中文像素字体。
 
 ## 📡 电台源
@@ -100,4 +101,4 @@ MIT License，详见 [LICENSE](./LICENSE)。
 
 ---
 
-*一个在 OnePlus 7T Pro（Android 12，Magisk root）上从零定制、手写编译的 Nothing 风格电台组件。v2.4.0 已完成构建、安装、桌面交互、18 台联网播放、HTTPS 链路、状态持久化、自动满幅状态排版、几何对齐审计、`ON AIR` 周期逐字动画及 3×5/5×6 桌面网格适配验证。*
+*一个在 OnePlus 7T Pro（Android 12，Magisk root）上从零定制、手写编译的 Nothing 风格电台组件。v2.4.1 使用 Doto 700 英文点阵字体，已完成自动满幅状态排版、`ON AIR` 周期逐字动画及多种桌面网格适配验证。*

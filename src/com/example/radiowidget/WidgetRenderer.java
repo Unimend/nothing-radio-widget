@@ -29,14 +29,14 @@ public final class WidgetRenderer {
     };
     private final Context context;
     private final Typeface zpix;
-    private final Typeface ndot;
+    private final Typeface doto;
     private final Paint paint = new Paint();
     private Bitmap matrixCache;
 
     public WidgetRenderer(Context context) {
         this.context = context.getApplicationContext();
         zpix = loadTypeface("zpix.ttf");
-        ndot = loadTypeface("ndot.otf");
+        doto = loadTypeface("doto.ttf");
     }
 
     public void updateAll(WidgetStateStore.Snapshot state, int animationFrame, String pressedAction) {
@@ -126,7 +126,7 @@ public final class WidgetRenderer {
 
         resetPaint();
         paint.setColor(Color.argb(175, 255, 255, 255));
-        paint.setTypeface(ndot);
+        paint.setTypeface(doto);
         paint.setTextSize(22f);
         paint.setTextAlign(Paint.Align.RIGHT);
         paint.setAntiAlias(true);
@@ -140,8 +140,8 @@ public final class WidgetRenderer {
         boolean hero = state == WidgetStateStore.PlaybackState.PLAYING
                 || state == WidgetStateStore.PlaybackState.PAUSED;
         resetPaint();
-        paint.setTypeface(ndot);
-        paint.setFakeBoldText(true);
+        paint.setTypeface(doto);
+        paint.setFakeBoldText(false);
         paint.setAntiAlias(true);
         if (hero) {
             String text = statusText(state);
@@ -230,7 +230,7 @@ public final class WidgetRenderer {
         }
 
         resetPaint();
-        paint.setTypeface(ndot);
+        paint.setTypeface(doto);
         paint.setTextSize(16f);
         paint.setTextAlign(Paint.Align.LEFT);
         paint.setColor(volume == 0f ? Color.rgb(255, 45, 45) : Color.GRAY);

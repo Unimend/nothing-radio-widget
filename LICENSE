@@ -24,5 +24,5 @@ SOFTWARE.
 
 ### 第三方资源版权说明
 
-- `assets/ndot.otf`（NDot57Caps）：来自 [rjwarrier/KWGT-Widgets](https://github.com/rjwarrier/KWGT-Widgets)，版权归原作者 / Nothing，仅供学习使用。
+- `assets/doto.ttf`（Doto）：Copyright 2024 The Doto Project Authors，采用 SIL Open Font License 1.1；许可证全文见 `assets/DOTO-OFL.txt`。
 - `assets/zpix.ttf`（Zpix 最像素）：来自 [SolidZORO/zpix-pixel-font](https://github.com/SolidZORO/zpix-pixel-font)，遵循其自身开源协议。
