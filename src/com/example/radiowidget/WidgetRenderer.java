@@ -179,8 +179,7 @@ public final class WidgetRenderer {
 
     private void drawHighlightedOnAirLetter(Canvas canvas, String text,
                                             float baseline, int frame) {
-        final int[] letterIndexes = new int[]{0, 1, 3, 4, 5};
-        int textIndex = letterIndexes[Math.floorMod(frame, letterIndexes.length)];
+        int textIndex = Math.floorMod(frame, text.length());
         float textWidth = paint.measureText(text);
         float left = CENTER_X - textWidth / 2f;
         float letterX = left + paint.measureText(text, 0, textIndex);
@@ -240,7 +239,7 @@ public final class WidgetRenderer {
     private String statusText(WidgetStateStore.PlaybackState state) {
         switch (state) {
             case TUNING: return "TUNING";
-            case PLAYING: return "ON AIR";
+            case PLAYING: return "ONAIR";
             case PAUSED: return "PAUSED";
             case NO_SIGNAL: return "NO SIGNAL";
             case OFFLINE: return "OFFLINE";

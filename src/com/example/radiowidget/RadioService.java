@@ -304,7 +304,7 @@ public class RadioService extends Service {
                     || player == null || !prepared) {
                 return;
             }
-            Log.i(TAG, "ON AIR 逐字点亮");
+            Log.i(TAG, "ONAIR 逐字点亮");
             animate(ACTION_AMBIENT, AMBIENT_PULSE_FRAMES, AMBIENT_PULSE_FRAME_DELAY_MS);
             scheduleAmbientPulse(playbackToken);
         }, AMBIENT_PULSE_INTERVAL_MS);
