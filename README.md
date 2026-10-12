@@ -26,7 +26,7 @@
 
 ## 📦 直接安装
 
-仓库根目录的 `radiowidget.apk` 是当前稳定版（v2.8.1），可以直接下载安装；也可以从源码构建，产物位于 `build/radiowidget.apk`：
+仓库根目录的 `radiowidget.apk` 是当前稳定版（v2.8.2），可以直接下载安装；也可以从源码构建，产物位于 `build/radiowidget.apk`：
 
 ```bash
 adb install -r radiowidget.apk
@@ -102,4 +102,4 @@ MIT License，详见 [LICENSE](./LICENSE)。
 
 ---
 
-*一个在 OnePlus 7T Pro（Android 12，Magisk root）上从零定制、手写编译的 Nothing 风格电台组件。v2.8.1 使用 Doto 700 英文点阵字体，完成统一状态字号、文字安全间距、逐字 `ONAIR`、左侧双线真实振幅及 3×5 桌面基准适配。*
+*一个在 OnePlus 7T Pro（Android 12，Magisk root）上从零定制、手写编译的 Nothing 风格电台组件。v2.8.2 使用 Doto 700 英文点阵字体，完成统一状态字号、文字安全间距、逐字 `ONAIR`、边缘式双线真实振幅及 3×5 桌面基准适配。*

@@ -190,7 +190,7 @@ public final class WidgetRenderer {
                 || amplitude == null || amplitude.length < 2) return;
         float fast = Math.max(0f, Math.min(1f, amplitude[0]));
         float slow = Math.max(0f, Math.min(1f, amplitude[1]));
-        float gapCenter = heroVisibleLeft("ONAIR") / 2f;
+        float gapCenter = heroVisibleLeft("ONAIR") * 0.35f;
         drawAmplitudeLine(canvas, gapCenter - 7f, fast, 175);
         drawAmplitudeLine(canvas, gapCenter + 7f, slow, 105);
     }
