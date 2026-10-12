@@ -80,12 +80,55 @@ public final class WidgetRenderer {
         Bitmap bitmap = Bitmap.createBitmap(WIDTH, HEIGHT, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
         Station station = Station.LIST[state.stationIndex];
+        drawSignalLayer(canvas, state, frame);
         drawStatusLayer(canvas, state.playbackState, frame, pressedAction);
         drawStation(canvas, station, state);
         drawControls(canvas, state, frame, pressedAction);
         drawVolume(canvas, state.volume, frame,
                 RadioService.ACTION_VOLUME.equals(pressedAction));
         return bitmap;
+    }
+
+    private void drawSignalLayer(Canvas canvas, WidgetStateStore.Snapshot state, int frame) {
+        if (state.playbackState != WidgetStateStore.PlaybackState.PLAYING) return;
+
+        // A deterministic, permission-free broadcast energy model. It creates a
+        // stable rhythm per station without recording or inspecting user audio.
+        final int barCount = 24;
+        final float left = 170f;
+        final float right = WIDTH - 170f;
+        final float baseline = 222f;
+        final float step = (right - left) / (barCount - 1f);
+        for (int index = 0; index < barCount; index++) {
+            double phase = frame * 0.71 + index * 1.31 + state.stationIndex * 0.47;
+            float primary = (float) Math.abs(Math.sin(phase));
+            float secondary = (float) Math.abs(Math.sin(phase * 0.43 + index * 0.37));
+            float energy = 0.20f + 0.52f * primary + 0.28f * secondary;
+            float height = 16f + 66f * energy;
+
+            resetPaint();
+            paint.setAntiAlias(false);
+            paint.setColor(index % 6 == 0
+                    ? Color.argb(92, 255, 45, 45)
+                    : Color.argb(58, 255, 255, 255));
+            float x = left + index * step;
+            canvas.drawRect(x - 3f, baseline - height, x + 3f, baseline, paint);
+        }
+
+        // A few grid-aligned red cells make the existing matrix react as one
+        // layer while keeping the title and controls readable.
+        for (int index = 0; index < 8; index++) {
+            int column = Math.floorMod(frame * 3 + index * 11
+                    + state.stationIndex * 5, 35) + 1;
+            int row = Math.floorMod(frame + index * 5 + state.stationIndex, 8) + 2;
+            float pulse = (float) Math.abs(Math.sin(frame * 0.55 + index * 0.9));
+            resetPaint();
+            paint.setAntiAlias(false);
+            paint.setColor(Color.argb(Math.round(18f + 48f * pulse), 255, 45, 45));
+            float cellLeft = column * 24f;
+            float cellTop = row * 24f;
+            canvas.drawRect(cellLeft, cellTop, cellLeft + 24f, cellTop + 24f, paint);
+        }
     }
 
     private Bitmap drawMatrix() {

@@ -22,6 +22,7 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.PowerManager;
+import android.os.SystemClock;
 import android.util.Log;
 
 import java.io.File;
@@ -49,6 +50,8 @@ public class RadioService extends Service {
     private static final int AMBIENT_PULSE_INTERVAL_MS = 8000;
     private static final int AMBIENT_PULSE_FRAMES = 5;
     private static final int AMBIENT_PULSE_FRAME_DELAY_MS = 95;
+    private static final int SIGNAL_FRAME_INTERVAL_MS = 220;
+    private static final int SIGNAL_SCREEN_OFF_CHECK_MS = 1500;
     private static final String USER_AGENT =
             "Mozilla/5.0 (Linux; Android 12; HD1910) AppleWebKit/537.36 "
                     + "(KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36";
@@ -67,6 +70,8 @@ public class RadioService extends Service {
     private boolean noisyReceiverRegistered;
     private int generation;
     private int failedAttempts;
+    private int signalFrame;
+    private long foregroundAnimationUntilMs;
 
     public static boolean isActive() {
         return active;
@@ -207,6 +212,7 @@ public class RadioService extends Service {
             setState(state.stationIndex, state.volume,
                     WidgetStateStore.PlaybackState.PLAYING, "播放中");
             animate(ACTION_TOGGLE, 3, 120);
+            scheduleSignalFlow(token);
             scheduleAmbientPulse(token);
             updateMediaSession();
             updateNotification();
@@ -284,6 +290,8 @@ public class RadioService extends Service {
 
     private void animate(String pressedAction, int frames, long frameDelayMs) {
         int animationToken = generation;
+        foregroundAnimationUntilMs = Math.max(foregroundAnimationUntilMs,
+                SystemClock.elapsedRealtime() + frames * frameDelayMs);
         for (int frame = 0; frame < frames; frame++) {
             final int currentFrame = frame;
             handler.postDelayed(() -> {
@@ -295,6 +303,27 @@ public class RadioService extends Service {
         handler.postDelayed(() -> {
             if (animationToken == generation) renderer.updateAll(state, 0, null);
         }, frames * frameDelayMs);
+    }
+
+    private void scheduleSignalFlow(int playbackToken) {
+        scheduleSignalFlow(playbackToken, SIGNAL_FRAME_INTERVAL_MS);
+    }
+
+    private void scheduleSignalFlow(int playbackToken, long delayMs) {
+        handler.postDelayed(() -> {
+            if (playbackToken != generation
+                    || state.playbackState != WidgetStateStore.PlaybackState.PLAYING
+                    || player == null || !prepared) {
+                return;
+            }
+            PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
+            boolean interactive = powerManager == null || powerManager.isInteractive();
+            if (interactive && SystemClock.elapsedRealtime() >= foregroundAnimationUntilMs) {
+                renderer.updateAll(state, signalFrame++, null);
+            }
+            scheduleSignalFlow(playbackToken,
+                    interactive ? SIGNAL_FRAME_INTERVAL_MS : SIGNAL_SCREEN_OFF_CHECK_MS);
+        }, delayMs);
     }
 
     private void scheduleAmbientPulse(int playbackToken) {
