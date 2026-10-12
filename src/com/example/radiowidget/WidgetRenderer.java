@@ -198,10 +198,34 @@ public final class WidgetRenderer {
         } else {
             center = PATTERN_PLAY;
         }
+        if (state.playbackState == WidgetStateStore.PlaybackState.PLAYING) {
+            drawControlCutout(canvas, CENTER_X, CENTER_Y);
+        }
         float pulse = state.playbackState == WidgetStateStore.PlaybackState.PLAYING
                 && RadioService.ACTION_TOGGLE.equals(pressedAction)
                 ? 4.8f + (frame % 3) * 0.35f : 4.8f;
         drawDotPattern(canvas, CENTER_X, CENTER_Y, center, pulse, 12f, red);
+    }
+
+    private void drawControlCutout(Canvas canvas, float centerX, float centerY) {
+        // Connected black dots form a compact, scalloped isolation window.
+        // It masks only the reactive A behind the pause symbol and keeps the
+        // surrounding ONAIR letter shapes visible.
+        final int columns = 7;
+        final int rows = 9;
+        final float gap = 12f;
+        final float radius = 6.2f;
+        float startX = centerX - ((columns - 1) * gap) / 2f;
+        float startY = centerY - ((rows - 1) * gap) / 2f;
+        resetPaint();
+        paint.setColor(Color.BLACK);
+        paint.setAntiAlias(true);
+        for (int row = 0; row < rows; row++) {
+            for (int column = 0; column < columns; column++) {
+                canvas.drawCircle(startX + column * gap,
+                        startY + row * gap, radius, paint);
+            }
+        }
     }
 
     private void drawVolume(Canvas canvas, float volume, int frame, boolean pressed) {
