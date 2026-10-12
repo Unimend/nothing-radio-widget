@@ -9,6 +9,7 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.net.Uri;
 import android.widget.RemoteViews;
@@ -17,6 +18,10 @@ import android.widget.RemoteViews;
 public final class WidgetRenderer {
     public static final int WIDTH = 900;
     public static final int HEIGHT = 300;
+    private static final float CENTER_X = WIDTH / 2f;
+    private static final float CENTER_Y = HEIGHT / 2f;
+    private static final float SIDE_CONTROL_INSET = 100f;
+    private static final float CONTENT_EDGE_INSET = 28f;
 
     private static final int[] VOLUME_IDS = new int[]{
             R.id.vol_0, R.id.vol_1, R.id.vol_2, R.id.vol_3, R.id.vol_4,
@@ -143,7 +148,7 @@ public final class WidgetRenderer {
         paint.setTextSize(42f);
         paint.setTextAlign(Paint.Align.CENTER);
         paint.setAntiAlias(false);
-        canvas.drawText(station.name, WIDTH / 2f, 58f, paint);
+        canvas.drawText(station.name, CENTER_X, 58f, paint);
 
         resetPaint();
         paint.setColor(Color.argb(175, 255, 255, 255));
@@ -152,7 +157,7 @@ public final class WidgetRenderer {
         paint.setTextAlign(Paint.Align.RIGHT);
         paint.setAntiAlias(true);
         String number = String.format(java.util.Locale.US, "FM %02d", state.stationIndex + 1);
-        canvas.drawText(number, WIDTH - 28f, 28f, paint);
+        canvas.drawText(number, WIDTH - CONTENT_EDGE_INSET, 28f, paint);
 
     }
 
@@ -164,17 +169,31 @@ public final class WidgetRenderer {
         paint.setFakeBoldText(true);
         paint.setAntiAlias(true);
         if (hero) {
-            paint.setTextSize(138f);
+            String text = statusText(state);
+            paint.setTextSize(300f);
             paint.setTextAlign(Paint.Align.CENTER);
             paint.setColor(state == WidgetStateStore.PlaybackState.PLAYING
-                    ? Color.argb(42, 255, 45, 45)
-                    : Color.argb(44, 255, 255, 255));
-            canvas.drawText(statusText(state), WIDTH / 2f, 215f, paint);
+                    ? Color.argb(34, 255, 45, 45)
+                    : Color.argb(36, 255, 255, 255));
+
+            // Fit against the real glyph bounds, then center the actual painted pixels.
+            // This avoids relying on a guessed baseline or on font metrics with empty space.
+            Rect bounds = new Rect();
+            paint.getTextBounds(text, 0, text.length(), bounds);
+            float availableWidth = WIDTH - 2f * 24f;
+            float availableHeight = HEIGHT - 2f * 26f;
+            float fitScale = Math.min(1f, Math.min(
+                    availableWidth / Math.max(1f, bounds.width()),
+                    availableHeight / Math.max(1f, bounds.height())));
+            paint.setTextSize(paint.getTextSize() * fitScale);
+            paint.getTextBounds(text, 0, text.length(), bounds);
+            float baseline = CENTER_Y - (bounds.top + bounds.bottom) / 2f;
+            canvas.drawText(text, CENTER_X, baseline, paint);
         } else {
             paint.setTextSize(24f);
             paint.setTextAlign(Paint.Align.LEFT);
             paint.setColor(statusColor(state));
-            canvas.drawText(statusText(state), 28f, 30f, paint);
+            canvas.drawText(statusText(state), CONTENT_EDGE_INSET, 30f, paint);
         }
     }
 
@@ -182,8 +201,10 @@ public final class WidgetRenderer {
                               int frame, String pressedAction) {
         int white = Color.WHITE;
         int red = Color.rgb(255, 45, 45);
-        drawDotPattern(canvas, 100, 162, PATTERN_PREV, 4.8f, 12f, white);
-        drawDotPattern(canvas, WIDTH - 100, 162, PATTERN_NEXT, 4.8f, 12f, white);
+        drawDotPattern(canvas, SIDE_CONTROL_INSET, CENTER_Y,
+                PATTERN_PREV, 4.8f, 12f, white);
+        drawDotPattern(canvas, WIDTH - SIDE_CONTROL_INSET, CENTER_Y,
+                PATTERN_NEXT, 4.8f, 12f, white);
 
         String[] center;
         if (state.playbackState == WidgetStateStore.PlaybackState.PLAYING) {
@@ -196,7 +217,7 @@ public final class WidgetRenderer {
         float pulse = state.playbackState == WidgetStateStore.PlaybackState.PLAYING
                 && RadioService.ACTION_TOGGLE.equals(pressedAction)
                 ? 4.8f + (frame % 3) * 0.35f : 4.8f;
-        drawDotPattern(canvas, WIDTH / 2f, 162, center, pulse, 12f, red);
+        drawDotPattern(canvas, CENTER_X, CENTER_Y, center, pulse, 12f, red);
     }
 
     private void drawVolume(Canvas canvas, float volume, int frame, boolean pressed) {
