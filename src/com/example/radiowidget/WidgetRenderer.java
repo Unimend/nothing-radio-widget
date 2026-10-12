@@ -162,12 +162,14 @@ public final class WidgetRenderer {
                     availableHeight / Math.max(1f, bounds.height())));
             paint.setTextSize(paint.getTextSize() * fitScale);
             paint.getTextBounds(text, 0, text.length(), bounds);
+            float textOriginX = CENTER_X - (bounds.left + bounds.right) / 2f;
             float baseline = CENTER_Y - (bounds.top + bounds.bottom) / 2f;
-            canvas.drawText(text, CENTER_X, baseline, paint);
+            paint.setTextAlign(Paint.Align.LEFT);
+            canvas.drawText(text, textOriginX, baseline, paint);
 
             if (state == WidgetStateStore.PlaybackState.PLAYING
                     && RadioService.ACTION_AMBIENT.equals(pressedAction)) {
-                drawHighlightedOnAirLetter(canvas, text, baseline, frame);
+                drawHighlightedOnAirLetter(canvas, text, textOriginX, baseline, frame);
             }
         } else {
             paint.setTextSize(24f);
@@ -178,11 +180,9 @@ public final class WidgetRenderer {
     }
 
     private void drawHighlightedOnAirLetter(Canvas canvas, String text,
-                                            float baseline, int frame) {
+                                            float textOriginX, float baseline, int frame) {
         int textIndex = Math.floorMod(frame, text.length());
-        float textWidth = paint.measureText(text);
-        float left = CENTER_X - textWidth / 2f;
-        float letterX = left + paint.measureText(text, 0, textIndex);
+        float letterX = textOriginX + paint.measureText(text, 0, textIndex);
 
         paint.setTextAlign(Paint.Align.LEFT);
         paint.setColor(Color.argb(210, 255, 55, 65));

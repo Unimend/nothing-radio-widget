@@ -26,13 +26,13 @@
 
 ## 📦 直接安装
 
-仓库根目录的 `radiowidget.apk` 是当前稳定版（v2.4.2），可以直接下载安装；也可以从源码构建，产物位于 `build/radiowidget.apk`：
+仓库根目录的 `radiowidget.apk` 是当前稳定版（v2.4.3），可以直接下载安装；也可以从源码构建，产物位于 `build/radiowidget.apk`：
 
 ```bash
 adb install -r radiowidget.apk
 ```
 
-安装后：长按桌面空白 → 小组件 → 找到 **「点阵电台」** → 拖到桌面。组件固定为 3×1。v2 包名为 `com.unimend.nothingradio`，可与历史 v1 并存。v2.4.2 使用 Doto 700 显示英文和数字，并根据真实字形边界把 `PAUSED` 与 `ONAIR` 放大到背景可容纳的最大尺寸；播放期间 `ONAIR` 会逐字点亮，背景方格始终静止。
+安装后：长按桌面空白 → 小组件 → 找到 **「点阵电台」** → 拖到桌面。组件固定为 3×1。v2 包名为 `com.unimend.nothingradio`，可与历史 v1 并存。v2.4.3 使用 Doto 700 显示英文和数字，并根据真实可见点阵边界把 `PAUSED` 与 `ONAIR` 放大并居中；播放期间 `ONAIR` 会逐字点亮，背景方格始终静止。
 
 ## 🔨 从源码构建
 
@@ -101,4 +101,4 @@ MIT License，详见 [LICENSE](./LICENSE)。
 
 ---
 
-*一个在 OnePlus 7T Pro（Android 12，Magisk root）上从零定制、手写编译的 Nothing 风格电台组件。v2.4.2 使用 Doto 700 英文点阵字体，已完成自动满幅状态排版、`ONAIR` 周期逐字动画及多种桌面网格适配验证。*
+*一个在 OnePlus 7T Pro（Android 12，Magisk root）上从零定制、手写编译的 Nothing 风格电台组件。v2.4.3 使用 Doto 700 英文点阵字体，已完成真实字形居中、自动满幅状态排版、`ONAIR` 周期逐字动画及多种桌面网格适配验证。*
