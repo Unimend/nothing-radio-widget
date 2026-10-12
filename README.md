@@ -11,7 +11,7 @@
 - **点阵图标**：上一台 `◀` / 播放 `▶` / 暂停 `❚❚` / 下一台 `▶`（红白圆点拼成）
 - **系统 MediaPlayer** 播放 HLS 流，播放时使用前台服务 + MediaSession
 - **真实状态机**：待机、调频、播放、暂停、离线、无信号和错误状态互不混淆
-- **有限帧动画**：播放、调频和音量操作有短时点阵反馈；播放期间每隔 8 秒依次点亮 `ONAIR` 五个字母
+- **音频响应 ONAIR**：把播放会话的 FFT 分为五段，分别控制 `O`、`N`、`A`、`I`、`R` 的亮度
 - **出错有界切台**：流失效时延迟尝试下一台，整轮失败后显示 `NO SIGNAL`
 - **状态持久化**：保存台号与组件音量，进程重启后不会恢复成假播放状态
 - **音频礼仪**：支持 Audio Focus、MediaSession 和拔耳机自动暂停
@@ -26,13 +26,14 @@
 
 ## 📦 直接安装
 
-仓库根目录的 `radiowidget.apk` 是当前稳定版（v2.4.3），可以直接下载安装；也可以从源码构建，产物位于 `build/radiowidget.apk`：
+仓库根目录的 `radiowidget.apk` 是当前稳定版（v2.7.0），可以直接下载安装；也可以从源码构建，产物位于 `build/radiowidget.apk`：
 
 ```bash
 adb install -r radiowidget.apk
+adb shell pm grant com.unimend.nothingradio android.permission.RECORD_AUDIO
 ```
 
-安装后：长按桌面空白 → 小组件 → 找到 **「点阵电台」** → 拖到桌面。组件固定为 3×1。v2 包名为 `com.unimend.nothingradio`，可与历史 v1 并存。v2.4.3 使用 Doto 700 显示英文和数字，并根据真实可见点阵边界把 `PAUSED` 与 `ONAIR` 放大并居中；播放期间 `ONAIR` 会逐字点亮，背景方格始终静止。
+安装后：长按桌面空白 → 小组件 → 找到 **「点阵电台」** → 拖到桌面。组件固定为 3×1。v2 包名为 `com.unimend.nothingradio`，可与历史 v1 并存。第二条 ADB 命令仅授权应用读取自身播放会话的频谱，不会启动麦克风录音；未授权时组件仍可播放，但 `ONAIR` 保持静态低亮。
 
 ## 🔨 从源码构建
 
@@ -63,7 +64,7 @@ adb install -r radiowidget.apk
 
 | 模块 | 说明 |
 |---|---|
-| `RadioService.java` | 前台服务：播放状态机、MediaPlayer、MediaSession、Audio Focus 与有限重试 |
+| `RadioService.java` | 前台服务：播放状态机、MediaPlayer、五段 FFT、MediaSession、Audio Focus 与有限重试 |
 | `RadioWidgetProvider.java` | 组件生命周期：添加时只渲染，用户点击后才启动播放 |
 | `WidgetStateStore.java` | 使用 SharedPreferences 持久化台号、音量和真实状态 |
 | `WidgetRenderer.java` | Nothing 点阵绘制、有限帧反馈和唯一 PendingIntent 绑定 |
@@ -101,4 +102,4 @@ MIT License，详见 [LICENSE](./LICENSE)。
 
 ---
 
-*一个在 OnePlus 7T Pro（Android 12，Magisk root）上从零定制、手写编译的 Nothing 风格电台组件。v2.4.3 使用 Doto 700 英文点阵字体，已完成真实字形居中、自动满幅状态排版、`ONAIR` 周期逐字动画及多种桌面网格适配验证。*
+*一个在 OnePlus 7T Pro（Android 12，Magisk root）上从零定制、手写编译的 Nothing 风格电台组件。v2.7.0 使用 Doto 700 英文点阵字体，完成真实字形居中、自动满幅状态排版、五段音频响应 `ONAIR` 及 3×5 桌面基准适配。*

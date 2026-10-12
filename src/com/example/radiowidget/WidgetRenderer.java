@@ -40,13 +40,18 @@ public final class WidgetRenderer {
     }
 
     public void updateAll(WidgetStateStore.Snapshot state, int animationFrame, String pressedAction) {
+        updateAll(state, animationFrame, pressedAction, null);
+    }
+
+    public void updateAll(WidgetStateStore.Snapshot state, int animationFrame,
+                          String pressedAction, float[] audioBands) {
         AppWidgetManager manager = AppWidgetManager.getInstance(context);
         int[] ids = manager.getAppWidgetIds(
                 new ComponentName(context, RadioWidgetProvider.class));
         if (ids.length == 0) return;
 
         Bitmap matrix = drawMatrix();
-        Bitmap content = drawContent(state, animationFrame, pressedAction);
+        Bitmap content = drawContent(state, animationFrame, pressedAction, audioBands);
         for (int id : ids) {
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_layout);
             views.setImageViewBitmap(R.id.background_matrix, matrix);
@@ -71,17 +76,16 @@ public final class WidgetRenderer {
         Canvas canvas = new Canvas(bitmap);
         canvas.drawColor(Color.BLACK);
         canvas.drawBitmap(drawMatrix(), 0, 0, paint);
-        canvas.drawBitmap(drawContent(state, frame, pressedAction), 0, 0, paint);
+        canvas.drawBitmap(drawContent(state, frame, pressedAction, null), 0, 0, paint);
         return bitmap;
     }
 
     private Bitmap drawContent(WidgetStateStore.Snapshot state, int frame,
-                               String pressedAction) {
+                               String pressedAction, float[] audioBands) {
         Bitmap bitmap = Bitmap.createBitmap(WIDTH, HEIGHT, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
         Station station = Station.LIST[state.stationIndex];
-        drawSignalLayer(canvas, state, frame);
-        drawStatusLayer(canvas, state.playbackState, frame, pressedAction);
+        drawStatusLayer(canvas, state.playbackState, frame, pressedAction, audioBands);
         drawStation(canvas, station, state);
         drawControls(canvas, state, frame, pressedAction);
         drawVolume(canvas, state.volume, frame,
@@ -89,71 +93,11 @@ public final class WidgetRenderer {
         return bitmap;
     }
 
-    private void drawSignalLayer(Canvas canvas, WidgetStateStore.Snapshot state, int frame) {
-        if (state.playbackState != WidgetStateStore.PlaybackState.PLAYING) return;
-
-        // A deterministic, permission-free broadcast energy model. It creates a
-        // stable rhythm per station without recording or inspecting user audio.
-        final int barCount = 24;
-        final float left = 170f;
-        final float right = WIDTH - 170f;
-        final float baseline = 222f;
-        final float step = (right - left) / (barCount - 1f);
-        for (int index = 0; index < barCount; index++) {
-            double phase = frame * 0.71 + index * 1.31 + state.stationIndex * 0.47;
-            float primary = (float) Math.abs(Math.sin(phase));
-            float secondary = (float) Math.abs(Math.sin(phase * 0.43 + index * 0.37));
-            float energy = 0.20f + 0.52f * primary + 0.28f * secondary;
-            float height = 16f + 66f * energy;
-
-            resetPaint();
-            paint.setAntiAlias(false);
-            paint.setColor(index % 6 == 0
-                    ? Color.argb(92, 255, 45, 45)
-                    : Color.argb(58, 255, 255, 255));
-            float x = left + index * step;
-            canvas.drawRect(x - 3f, baseline - height, x + 3f, baseline, paint);
-        }
-
-        // A few grid-aligned red cells make the existing matrix react as one
-        // layer while keeping the title and controls readable.
-        for (int index = 0; index < 8; index++) {
-            int column = Math.floorMod(frame * 3 + index * 11
-                    + state.stationIndex * 5, 35) + 1;
-            int row = Math.floorMod(frame + index * 5 + state.stationIndex, 8) + 2;
-            float pulse = (float) Math.abs(Math.sin(frame * 0.55 + index * 0.9));
-            resetPaint();
-            paint.setAntiAlias(false);
-            paint.setColor(Color.argb(Math.round(18f + 48f * pulse), 255, 45, 45));
-            float cellLeft = column * 24f;
-            float cellTop = row * 24f;
-            canvas.drawRect(cellLeft, cellTop, cellLeft + 24f, cellTop + 24f, paint);
-        }
-    }
-
     private Bitmap drawMatrix() {
         if (matrixCache != null && !matrixCache.isRecycled()) return matrixCache;
         Bitmap bitmap = Bitmap.createBitmap(WIDTH, HEIGHT, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
-        final float cell = 24f;
-        int rowCount = (int) Math.ceil(HEIGHT / cell);
-        int columnCount = (int) Math.ceil(WIDTH / cell);
-        for (int row = 0; row < rowCount; row++) {
-            for (int column = 0; column < columnCount; column++) {
-                resetPaint();
-                boolean accent = ((row * 7 + column * 11) % 37) == 0;
-                int alpha = 14 + ((row * 3 + column * 5) % 4) * 5;
-                int color = accent
-                        ? Color.argb(28, 255, 45, 45)
-                        : Color.argb(alpha, 255, 255, 255);
-                paint.setColor(color);
-                paint.setAntiAlias(false);
-                float left = column * cell;
-                float top = row * cell;
-                canvas.drawRect(left, top,
-                        Math.min(WIDTH, left + cell), Math.min(HEIGHT, top + cell), paint);
-            }
-        }
+        canvas.drawColor(Color.BLACK);
         matrixCache = bitmap;
         return matrixCache;
     }
@@ -179,7 +123,7 @@ public final class WidgetRenderer {
     }
 
     private void drawStatusLayer(Canvas canvas, WidgetStateStore.PlaybackState state,
-                                 int frame, String pressedAction) {
+                                 int frame, String pressedAction, float[] audioBands) {
         boolean hero = state == WidgetStateStore.PlaybackState.PLAYING
                 || state == WidgetStateStore.PlaybackState.PAUSED
                 || state == WidgetStateStore.PlaybackState.TUNING;
@@ -213,9 +157,8 @@ public final class WidgetRenderer {
             paint.setTextAlign(Paint.Align.LEFT);
             canvas.drawText(text, textOriginX, baseline, paint);
 
-            if (state == WidgetStateStore.PlaybackState.PLAYING
-                    && RadioService.ACTION_AMBIENT.equals(pressedAction)) {
-                drawHighlightedOnAirLetter(canvas, text, textOriginX, baseline, frame);
+            if (state == WidgetStateStore.PlaybackState.PLAYING && audioBands != null) {
+                drawAudioReactiveLetters(canvas, text, textOriginX, baseline, audioBands);
             }
         } else {
             paint.setTextSize(24f);
@@ -225,14 +168,17 @@ public final class WidgetRenderer {
         }
     }
 
-    private void drawHighlightedOnAirLetter(Canvas canvas, String text,
-                                            float textOriginX, float baseline, int frame) {
-        int textIndex = Math.floorMod(frame, text.length());
-        float letterX = textOriginX + paint.measureText(text, 0, textIndex);
-
+    private void drawAudioReactiveLetters(Canvas canvas, String text,
+                                          float textOriginX, float baseline,
+                                          float[] audioBands) {
         paint.setTextAlign(Paint.Align.LEFT);
-        paint.setColor(Color.argb(210, 255, 55, 65));
-        canvas.drawText(text, textIndex, textIndex + 1, letterX, baseline, paint);
+        int count = Math.min(text.length(), audioBands.length);
+        for (int index = 0; index < count; index++) {
+            float energy = Math.max(0f, Math.min(1f, audioBands[index]));
+            float letterX = textOriginX + paint.measureText(text, 0, index);
+            paint.setColor(Color.argb(Math.round(42f + energy * 213f), 255, 55, 65));
+            canvas.drawText(text, index, index + 1, letterX, baseline, paint);
+        }
     }
 
     private void drawControls(Canvas canvas, WidgetStateStore.Snapshot state,

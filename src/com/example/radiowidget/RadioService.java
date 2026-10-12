@@ -13,6 +13,7 @@ import android.graphics.Bitmap;
 import android.media.AudioAttributes;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.media.audiofx.Visualizer;
 import android.media.session.MediaSession;
 import android.media.session.PlaybackState;
 import android.net.ConnectivityManager;
@@ -39,7 +40,6 @@ public class RadioService extends Service {
     public static final String ACTION_PREV = "com.unimend.nothingradio.PREV";
     public static final String ACTION_VOLUME = "com.unimend.nothingradio.VOLUME";
     public static final String ACTION_PREVIEW = "com.unimend.nothingradio.PREVIEW";
-    public static final String ACTION_AMBIENT = "com.unimend.nothingradio.AMBIENT";
     public static final String EXTRA_VOLUME = "level";
 
     private static final String TAG = "RadioWidget";
@@ -47,11 +47,8 @@ public class RadioService extends Service {
     private static final int NOTIFICATION_ID = 20;
     private static final int CONNECT_TIMEOUT_MS = 15000;
     private static final int RETRY_DELAY_MS = 900;
-    private static final int AMBIENT_PULSE_INTERVAL_MS = 8000;
-    private static final int AMBIENT_PULSE_FRAMES = 5;
-    private static final int AMBIENT_PULSE_FRAME_DELAY_MS = 95;
-    private static final int SIGNAL_FRAME_INTERVAL_MS = 220;
-    private static final int SIGNAL_SCREEN_OFF_CHECK_MS = 1500;
+    private static final int AUDIO_VISUALIZATION_FRAME_MS = 100;
+    private static final int AUDIO_SCREEN_OFF_CHECK_MS = 1500;
     private static final String USER_AGENT =
             "Mozilla/5.0 (Linux; Android 12; HD1910) AppleWebKit/537.36 "
                     + "(KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36";
@@ -60,6 +57,7 @@ public class RadioService extends Service {
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private MediaPlayer player;
+    private Visualizer visualizer;
     private AudioManager audioManager;
     private MediaSession mediaSession;
     private WidgetStateStore store;
@@ -70,8 +68,8 @@ public class RadioService extends Service {
     private boolean noisyReceiverRegistered;
     private int generation;
     private int failedAttempts;
-    private int signalFrame;
     private long foregroundAnimationUntilMs;
+    private volatile float[] audioBands = new float[5];
 
     public static boolean isActive() {
         return active;
@@ -212,8 +210,9 @@ public class RadioService extends Service {
             setState(state.stationIndex, state.volume,
                     WidgetStateStore.PlaybackState.PLAYING, "播放中");
             animate(ACTION_TOGGLE, 3, 120);
-            scheduleSignalFlow(token);
-            scheduleAmbientPulse(token);
+            if (startAudioSampling(candidate)) {
+                scheduleAudioVisualization(token);
+            }
             updateMediaSession();
             updateNotification();
             Log.i(TAG, "开始播放: " + station.name);
@@ -305,11 +304,66 @@ public class RadioService extends Service {
         }, frames * frameDelayMs);
     }
 
-    private void scheduleSignalFlow(int playbackToken) {
-        scheduleSignalFlow(playbackToken, SIGNAL_FRAME_INTERVAL_MS);
+    private boolean startAudioSampling(MediaPlayer candidate) {
+        releaseVisualizer();
+        try {
+            Visualizer sampler = new Visualizer(candidate.getAudioSessionId());
+            int[] captureRange = Visualizer.getCaptureSizeRange();
+            int captureSize = Math.min(256, captureRange[1]);
+            captureSize = Math.max(captureRange[0], captureSize);
+            sampler.setCaptureSize(captureSize);
+            sampler.setDataCaptureListener(new Visualizer.OnDataCaptureListener() {
+                @Override
+                public void onWaveFormDataCapture(Visualizer visualizer, byte[] waveform,
+                                                  int samplingRate) {
+                }
+
+                @Override
+                public void onFftDataCapture(Visualizer visualizer, byte[] fft,
+                                             int samplingRate) {
+                    updateAudioBands(fft);
+                }
+            }, Visualizer.getMaxCaptureRate() / 2, false, true);
+            sampler.setEnabled(true);
+            visualizer = sampler;
+            Log.i(TAG, "ONAIR 五段音频采样已启用");
+            return true;
+        } catch (Exception error) {
+            releaseVisualizer();
+            audioBands = new float[5];
+            Log.w(TAG, "音频采样不可用，保持静态 ONAIR", error);
+            return false;
+        }
     }
 
-    private void scheduleSignalFlow(int playbackToken, long delayMs) {
+    private void updateAudioBands(byte[] fft) {
+        if (fft == null || fft.length < 8) return;
+        int binCount = fft.length / 2;
+        int[] edges = {1, 3, 7, 15, 31, binCount};
+        float[] previous = audioBands;
+        float[] next = new float[5];
+        for (int band = 0; band < next.length; band++) {
+            int start = Math.min(edges[band], binCount - 1);
+            int end = Math.max(start + 1, Math.min(edges[band + 1], binCount));
+            double total = 0d;
+            for (int bin = start; bin < end; bin++) {
+                int real = fft[bin * 2];
+                int imaginary = fft[bin * 2 + 1];
+                total += Math.sqrt(real * real + imaginary * imaginary);
+            }
+            double average = total / Math.max(1, end - start);
+            float normalized = Math.min(1f, (float) (Math.log1p(average) / 4.8d));
+            float old = previous != null && band < previous.length ? previous[band] : 0f;
+            next[band] = old * 0.58f + normalized * 0.42f;
+        }
+        audioBands = next;
+    }
+
+    private void scheduleAudioVisualization(int playbackToken) {
+        scheduleAudioVisualization(playbackToken, AUDIO_VISUALIZATION_FRAME_MS);
+    }
+
+    private void scheduleAudioVisualization(int playbackToken, long delayMs) {
         handler.postDelayed(() -> {
             if (playbackToken != generation
                     || state.playbackState != WidgetStateStore.PlaybackState.PLAYING
@@ -319,24 +373,11 @@ public class RadioService extends Service {
             PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
             boolean interactive = powerManager == null || powerManager.isInteractive();
             if (interactive && SystemClock.elapsedRealtime() >= foregroundAnimationUntilMs) {
-                renderer.updateAll(state, signalFrame++, null);
+                renderer.updateAll(state, 0, null, audioBands);
             }
-            scheduleSignalFlow(playbackToken,
-                    interactive ? SIGNAL_FRAME_INTERVAL_MS : SIGNAL_SCREEN_OFF_CHECK_MS);
+            scheduleAudioVisualization(playbackToken,
+                    interactive ? AUDIO_VISUALIZATION_FRAME_MS : AUDIO_SCREEN_OFF_CHECK_MS);
         }, delayMs);
-    }
-
-    private void scheduleAmbientPulse(int playbackToken) {
-        handler.postDelayed(() -> {
-            if (playbackToken != generation
-                    || state.playbackState != WidgetStateStore.PlaybackState.PLAYING
-                    || player == null || !prepared) {
-                return;
-            }
-            Log.i(TAG, "ONAIR 逐字点亮");
-            animate(ACTION_AMBIENT, AMBIENT_PULSE_FRAMES, AMBIENT_PULSE_FRAME_DELAY_MS);
-            scheduleAmbientPulse(playbackToken);
-        }, AMBIENT_PULSE_INTERVAL_MS);
     }
 
     private boolean requestAudioFocus() {
@@ -501,6 +542,7 @@ public class RadioService extends Service {
 
     private void releasePlayer() {
         prepared = false;
+        releaseVisualizer();
         if (player != null) {
             try {
                 player.reset();
@@ -512,6 +554,21 @@ public class RadioService extends Service {
             }
             player = null;
         }
+    }
+
+    private void releaseVisualizer() {
+        if (visualizer != null) {
+            try {
+                visualizer.setEnabled(false);
+            } catch (Exception ignored) {
+            }
+            try {
+                visualizer.release();
+            } catch (Exception ignored) {
+            }
+            visualizer = null;
+        }
+        audioBands = new float[5];
     }
 
     private void dumpPreview() {
