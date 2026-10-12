@@ -44,14 +44,14 @@ public final class WidgetRenderer {
     }
 
     public void updateAll(WidgetStateStore.Snapshot state, int animationFrame,
-                          String pressedAction, float[] audioBands) {
+                          String pressedAction, float[] audioAmplitude) {
         AppWidgetManager manager = AppWidgetManager.getInstance(context);
         int[] ids = manager.getAppWidgetIds(
                 new ComponentName(context, RadioWidgetProvider.class));
         if (ids.length == 0) return;
 
         Bitmap matrix = drawMatrix();
-        Bitmap content = drawContent(state, animationFrame, pressedAction, audioBands);
+        Bitmap content = drawContent(state, animationFrame, pressedAction, audioAmplitude);
         for (int id : ids) {
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_layout);
             views.setImageViewBitmap(R.id.background_matrix, matrix);
@@ -81,12 +81,13 @@ public final class WidgetRenderer {
     }
 
     private Bitmap drawContent(WidgetStateStore.Snapshot state, int frame,
-                               String pressedAction, float[] audioBands) {
+                               String pressedAction, float[] audioAmplitude) {
         Bitmap bitmap = Bitmap.createBitmap(WIDTH, HEIGHT, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
         Station station = Station.LIST[state.stationIndex];
-        drawStatusLayer(canvas, state.playbackState, frame, pressedAction, audioBands);
+        drawStatusLayer(canvas, state.playbackState, frame, pressedAction);
         drawStation(canvas, station, state);
+        drawAmplitudeMeter(canvas, state.playbackState, audioAmplitude);
         drawControls(canvas, state, frame, pressedAction);
         drawVolume(canvas, state.volume, frame,
                 RadioService.ACTION_VOLUME.equals(pressedAction));
@@ -123,7 +124,7 @@ public final class WidgetRenderer {
     }
 
     private void drawStatusLayer(Canvas canvas, WidgetStateStore.PlaybackState state,
-                                 int frame, String pressedAction, float[] audioBands) {
+                                 int frame, String pressedAction) {
         boolean hero = state == WidgetStateStore.PlaybackState.PLAYING
                 || state == WidgetStateStore.PlaybackState.PAUSED
                 || state == WidgetStateStore.PlaybackState.TUNING;
@@ -157,8 +158,9 @@ public final class WidgetRenderer {
             paint.setTextAlign(Paint.Align.LEFT);
             canvas.drawText(text, textOriginX, baseline, paint);
 
-            if (state == WidgetStateStore.PlaybackState.PLAYING && audioBands != null) {
-                drawAudioReactiveLetters(canvas, text, textOriginX, baseline, audioBands);
+            if (state == WidgetStateStore.PlaybackState.PLAYING
+                    && RadioService.ACTION_AMBIENT.equals(pressedAction)) {
+                drawHighlightedOnAirLetter(canvas, text, textOriginX, baseline, frame);
             }
         } else {
             paint.setTextSize(24f);
@@ -168,17 +170,33 @@ public final class WidgetRenderer {
         }
     }
 
-    private void drawAudioReactiveLetters(Canvas canvas, String text,
-                                          float textOriginX, float baseline,
-                                          float[] audioBands) {
+    private void drawHighlightedOnAirLetter(Canvas canvas, String text,
+                                            float textOriginX, float baseline, int frame) {
+        int index = Math.floorMod(frame, text.length());
         paint.setTextAlign(Paint.Align.LEFT);
-        int count = Math.min(text.length(), audioBands.length);
-        for (int index = 0; index < count; index++) {
-            float energy = Math.max(0f, Math.min(1f, audioBands[index]));
-            float letterX = textOriginX + paint.measureText(text, 0, index);
-            paint.setColor(Color.argb(Math.round(28f + energy * 122f), 255, 55, 65));
-            canvas.drawText(text, index, index + 1, letterX, baseline, paint);
-        }
+        float letterX = textOriginX + paint.measureText(text, 0, index);
+        paint.setColor(Color.argb(190, 255, 55, 65));
+        canvas.drawText(text, index, index + 1, letterX, baseline, paint);
+    }
+
+    private void drawAmplitudeMeter(Canvas canvas, WidgetStateStore.PlaybackState state,
+                                    float[] amplitude) {
+        if (state != WidgetStateStore.PlaybackState.PLAYING
+                || amplitude == null || amplitude.length < 2) return;
+        float fast = Math.max(0f, Math.min(1f, amplitude[0]));
+        float slow = Math.max(0f, Math.min(1f, amplitude[1]));
+        drawAmplitudeLine(canvas, 18f, fast, 175);
+        drawAmplitudeLine(canvas, 32f, slow, 105);
+    }
+
+    private void drawAmplitudeLine(Canvas canvas, float centerX, float amplitude, int maxAlpha) {
+        float height = 18f + amplitude * 150f;
+        resetPaint();
+        paint.setAntiAlias(false);
+        paint.setColor(Color.argb(Math.round(35f + amplitude * (maxAlpha - 35f)),
+                255, 45, 45));
+        canvas.drawRect(centerX - 3f, CENTER_Y - height / 2f,
+                centerX + 3f, CENTER_Y + height / 2f, paint);
     }
 
     private void drawControls(Canvas canvas, WidgetStateStore.Snapshot state,
@@ -198,35 +216,12 @@ public final class WidgetRenderer {
         } else {
             center = PATTERN_PLAY;
         }
-        if (state.playbackState == WidgetStateStore.PlaybackState.PLAYING) {
-            drawControlCutout(canvas, CENTER_X, CENTER_Y);
-        }
         float pulse = state.playbackState == WidgetStateStore.PlaybackState.PLAYING
                 && RadioService.ACTION_TOGGLE.equals(pressedAction)
                 ? 4.8f + (frame % 3) * 0.35f : 4.8f;
         drawDotPattern(canvas, CENTER_X, CENTER_Y, center, pulse, 12f, red);
     }
 
-    private void drawControlCutout(Canvas canvas, float centerX, float centerY) {
-        // Connected black dots form a compact, scalloped isolation window.
-        // It masks only the reactive A behind the pause symbol and keeps the
-        // surrounding ONAIR letter shapes visible.
-        final int columns = 7;
-        final int rows = 9;
-        final float gap = 12f;
-        final float radius = 6.2f;
-        float startX = centerX - ((columns - 1) * gap) / 2f;
-        float startY = centerY - ((rows - 1) * gap) / 2f;
-        resetPaint();
-        paint.setColor(Color.BLACK);
-        paint.setAntiAlias(true);
-        for (int row = 0; row < rows; row++) {
-            for (int column = 0; column < columns; column++) {
-                canvas.drawCircle(startX + column * gap,
-                        startY + row * gap, radius, paint);
-            }
-        }
-    }
 
     private void drawVolume(Canvas canvas, float volume, int frame, boolean pressed) {
         float left = 68f;

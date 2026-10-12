@@ -40,6 +40,7 @@ public class RadioService extends Service {
     public static final String ACTION_PREV = "com.unimend.nothingradio.PREV";
     public static final String ACTION_VOLUME = "com.unimend.nothingradio.VOLUME";
     public static final String ACTION_PREVIEW = "com.unimend.nothingradio.PREVIEW";
+    public static final String ACTION_AMBIENT = "com.unimend.nothingradio.AMBIENT";
     public static final String EXTRA_VOLUME = "level";
 
     private static final String TAG = "RadioWidget";
@@ -47,6 +48,9 @@ public class RadioService extends Service {
     private static final int NOTIFICATION_ID = 20;
     private static final int CONNECT_TIMEOUT_MS = 15000;
     private static final int RETRY_DELAY_MS = 900;
+    private static final int AMBIENT_PULSE_INTERVAL_MS = 8000;
+    private static final int AMBIENT_PULSE_FRAMES = 5;
+    private static final int AMBIENT_PULSE_FRAME_DELAY_MS = 95;
     private static final int AUDIO_VISUALIZATION_FRAME_MS = 100;
     private static final int AUDIO_SCREEN_OFF_CHECK_MS = 1500;
     private static final String USER_AGENT =
@@ -69,8 +73,8 @@ public class RadioService extends Service {
     private int generation;
     private int failedAttempts;
     private long foregroundAnimationUntilMs;
-    private volatile float[] audioBands = new float[5];
-    private final float[] audioBandPeaks = {0.01f, 0.01f, 0.01f, 0.01f, 0.01f};
+    private volatile float[] audioAmplitude = new float[2];
+    private volatile int ambientLetter = -1;
 
     public static boolean isActive() {
         return active;
@@ -214,6 +218,7 @@ public class RadioService extends Service {
             if (startAudioSampling(candidate)) {
                 scheduleAudioVisualization(token);
             }
+            scheduleAmbientPulse(token);
             updateMediaSession();
             updateNotification();
             Log.i(TAG, "开始播放: " + station.name);
@@ -317,53 +322,41 @@ public class RadioService extends Service {
                 @Override
                 public void onWaveFormDataCapture(Visualizer visualizer, byte[] waveform,
                                                   int samplingRate) {
+                    updateAudioAmplitude(waveform);
                 }
 
                 @Override
                 public void onFftDataCapture(Visualizer visualizer, byte[] fft,
                                              int samplingRate) {
-                    updateAudioBands(fft);
                 }
-            }, Visualizer.getMaxCaptureRate() / 2, false, true);
+            }, Visualizer.getMaxCaptureRate() / 2, true, false);
             sampler.setEnabled(true);
             visualizer = sampler;
-            Log.i(TAG, "ONAIR 五段音频采样已启用");
+            Log.i(TAG, "左侧双线音频振幅采样已启用");
             return true;
         } catch (Exception error) {
             releaseVisualizer();
-            audioBands = new float[5];
-            Log.w(TAG, "音频采样不可用，保持静态 ONAIR", error);
+            audioAmplitude = new float[2];
+            Log.w(TAG, "音频振幅采样不可用，隐藏左侧电平线", error);
             return false;
         }
     }
 
-    private void updateAudioBands(byte[] fft) {
-        if (fft == null || fft.length < 8) return;
-        int binCount = fft.length / 2;
-        int[] edges = {1, 3, 7, 15, 31, binCount};
-        float[] previous = audioBands;
-        float[] next = new float[5];
-        for (int band = 0; band < next.length; band++) {
-            int start = Math.min(edges[band], binCount - 1);
-            int end = Math.max(start + 1, Math.min(edges[band + 1], binCount));
-            double total = 0d;
-            for (int bin = start; bin < end; bin++) {
-                int real = fft[bin * 2];
-                int imaginary = fft[bin * 2 + 1];
-                total += Math.sqrt(real * real + imaginary * imaginary);
-            }
-            double average = total / Math.max(1, end - start);
-            float raw = Math.min(1f, (float) (Math.log1p(average) / 4.8d));
-            // Each frequency range gets its own slowly decaying peak. This
-            // compensates for speech/music naturally carrying more low-band
-            // energy, so O does not remain permanently brighter than NAIR.
-            audioBandPeaks[band] = Math.max(raw, audioBandPeaks[band] * 0.992f);
-            float normalized = Math.min(1f, raw / Math.max(0.12f, audioBandPeaks[band]));
-            normalized = Math.max(0f, (normalized - 0.20f) / 0.80f);
-            float old = previous != null && band < previous.length ? previous[band] : 0f;
-            next[band] = old * 0.64f + normalized * 0.36f;
+    private void updateAudioAmplitude(byte[] waveform) {
+        if (waveform == null || waveform.length == 0) return;
+        double squareSum = 0d;
+        int peak = 0;
+        for (byte sample : waveform) {
+            int centered = (sample & 0xff) - 128;
+            squareSum += centered * centered;
+            peak = Math.max(peak, Math.abs(centered));
         }
-        audioBands = next;
+        float rms = Math.min(1f, (float) (Math.sqrt(squareSum / waveform.length) / 72d));
+        float peakLevel = Math.min(1f, peak / 112f);
+        float[] previous = audioAmplitude;
+        float fast = previous[0] * 0.42f + peakLevel * 0.58f;
+        float slow = previous[1] * 0.82f + rms * 0.18f;
+        audioAmplitude = new float[]{fast, slow};
     }
 
     private void scheduleAudioVisualization(int playbackToken) {
@@ -380,11 +373,35 @@ public class RadioService extends Service {
             PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
             boolean interactive = powerManager == null || powerManager.isInteractive();
             if (interactive && SystemClock.elapsedRealtime() >= foregroundAnimationUntilMs) {
-                renderer.updateAll(state, 0, null, audioBands);
+                String action = ambientLetter >= 0 ? ACTION_AMBIENT : null;
+                renderer.updateAll(state, Math.max(0, ambientLetter), action, audioAmplitude);
             }
             scheduleAudioVisualization(playbackToken,
                     interactive ? AUDIO_VISUALIZATION_FRAME_MS : AUDIO_SCREEN_OFF_CHECK_MS);
         }, delayMs);
+    }
+
+    private void scheduleAmbientPulse(int playbackToken) {
+        handler.postDelayed(() -> {
+            if (playbackToken != generation
+                    || state.playbackState != WidgetStateStore.PlaybackState.PLAYING
+                    || player == null || !prepared) {
+                return;
+            }
+            for (int letter = 0; letter < AMBIENT_PULSE_FRAMES; letter++) {
+                final int currentLetter = letter;
+                handler.postDelayed(() -> {
+                    if (playbackToken == generation) {
+                        ambientLetter = currentLetter;
+                        renderer.updateAll(state, currentLetter, ACTION_AMBIENT, audioAmplitude);
+                    }
+                }, letter * AMBIENT_PULSE_FRAME_DELAY_MS);
+            }
+            handler.postDelayed(() -> {
+                if (playbackToken == generation) ambientLetter = -1;
+            }, AMBIENT_PULSE_FRAMES * AMBIENT_PULSE_FRAME_DELAY_MS);
+            scheduleAmbientPulse(playbackToken);
+        }, AMBIENT_PULSE_INTERVAL_MS);
     }
 
     private boolean requestAudioFocus() {
@@ -575,10 +592,8 @@ public class RadioService extends Service {
             }
             visualizer = null;
         }
-        audioBands = new float[5];
-        for (int band = 0; band < audioBandPeaks.length; band++) {
-            audioBandPeaks[band] = 0.01f;
-        }
+        audioAmplitude = new float[2];
+        ambientLetter = -1;
     }
 
     private void dumpPreview() {
