@@ -127,7 +127,7 @@ public final class WidgetRenderer {
         resetPaint();
         paint.setColor(Color.argb(175, 255, 255, 255));
         paint.setTypeface(doto);
-        paint.setTextSize(22f);
+        paint.setTextSize(30f);
         paint.setTextAlign(Paint.Align.RIGHT);
         paint.setAntiAlias(true);
         String number = String.format(java.util.Locale.US, "FM %02d", state.stationIndex + 1);
@@ -138,7 +138,8 @@ public final class WidgetRenderer {
     private void drawStatusLayer(Canvas canvas, WidgetStateStore.PlaybackState state,
                                  int frame, String pressedAction) {
         boolean hero = state == WidgetStateStore.PlaybackState.PLAYING
-                || state == WidgetStateStore.PlaybackState.PAUSED;
+                || state == WidgetStateStore.PlaybackState.PAUSED
+                || state == WidgetStateStore.PlaybackState.TUNING;
         resetPaint();
         paint.setTypeface(doto);
         paint.setFakeBoldText(false);
@@ -149,6 +150,8 @@ public final class WidgetRenderer {
             paint.setTextAlign(Paint.Align.CENTER);
             paint.setColor(state == WidgetStateStore.PlaybackState.PLAYING
                     ? Color.argb(34, 255, 45, 45)
+                    : state == WidgetStateStore.PlaybackState.TUNING
+                    ? Color.argb(38, 255, 45, 45)
                     : Color.argb(36, 255, 255, 255));
 
             // Fit against the real glyph bounds, then center the actual painted pixels.
