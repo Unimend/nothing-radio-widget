@@ -81,6 +81,7 @@ public final class WidgetRenderer {
         Bitmap bitmap = Bitmap.createBitmap(WIDTH, HEIGHT, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
         Station station = Station.LIST[state.stationIndex];
+        drawStatusLayer(canvas, state.playbackState);
         drawStation(canvas, station, state);
         drawControls(canvas, state, frame, pressedAction);
         drawVolume(canvas, state.volume, frame,
@@ -153,12 +154,28 @@ public final class WidgetRenderer {
         String number = String.format(java.util.Locale.US, "FM %02d", state.stationIndex + 1);
         canvas.drawText(number, WIDTH - 28f, 28f, paint);
 
+    }
+
+    private void drawStatusLayer(Canvas canvas, WidgetStateStore.PlaybackState state) {
+        boolean hero = state == WidgetStateStore.PlaybackState.PLAYING
+                || state == WidgetStateStore.PlaybackState.PAUSED;
         resetPaint();
         paint.setTypeface(ndot);
-        paint.setTextSize(22f);
-        paint.setTextAlign(Paint.Align.LEFT);
-        paint.setColor(statusColor(state.playbackState));
-        canvas.drawText(statusText(state), 28f, 29f, paint);
+        paint.setFakeBoldText(true);
+        paint.setAntiAlias(true);
+        if (hero) {
+            paint.setTextSize(138f);
+            paint.setTextAlign(Paint.Align.CENTER);
+            paint.setColor(state == WidgetStateStore.PlaybackState.PLAYING
+                    ? Color.argb(42, 255, 45, 45)
+                    : Color.argb(44, 255, 255, 255));
+            canvas.drawText(statusText(state), WIDTH / 2f, 215f, paint);
+        } else {
+            paint.setTextSize(24f);
+            paint.setTextAlign(Paint.Align.LEFT);
+            paint.setColor(statusColor(state));
+            canvas.drawText(statusText(state), 28f, 30f, paint);
+        }
     }
 
     private void drawControls(Canvas canvas, WidgetStateStore.Snapshot state,
@@ -206,8 +223,8 @@ public final class WidgetRenderer {
         canvas.drawText(volume == 0f ? "MUTE" : "VOL", 26f, 268f, paint);
     }
 
-    private String statusText(WidgetStateStore.Snapshot state) {
-        switch (state.playbackState) {
+    private String statusText(WidgetStateStore.PlaybackState state) {
+        switch (state) {
             case TUNING: return "TUNING";
             case PLAYING: return "ON AIR";
             case PAUSED: return "PAUSED";
